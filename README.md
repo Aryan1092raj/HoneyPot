@@ -114,7 +114,7 @@ Automatically detects and extracts:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/scamhoneypot.git
+git clone https://github.com/Aryan1092raj/HoneyPot.git
 cd scamhoneypot
 
 # Create virtual environment

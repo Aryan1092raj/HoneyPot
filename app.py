@@ -322,64 +322,7 @@ tab1, tab2 = st.tabs(["💬 Chat Mode", "📞 Demo Call Mode"])
 # ============================================================
 
 with tab1:
-    # AUTO-PLAY SEQUENTIAL AUDIO
-    if st.session_state.play_sequential and not st.session_state.call_mode:
-        scammer_b64 = st.session_state.latest_scammer_audio
-        agent_b64 = st.session_state.latest_agent_audio
-
-        if scammer_b64 and agent_b64:
-            player_id = str(uuid.uuid4())[:8]
-            
-            sequential_html = f"""
-            <div id="audio-player-{player_id}" style="margin-bottom:16px; background:#1a1a2e; padding:14px; border-radius:8px; border:2px solid #ffa500;">
-                <div id="status-{player_id}" style="font-size:0.9rem; font-weight:bold; color:#ffa500; margin-bottom:8px;">
-                    🔊 Click to play conversation
-                </div>
-                <button id="play-btn-{player_id}" 
-                        style="background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:bold;">
-                    ▶️ Play Audio
-                </button>
-            </div>
-            <audio id="scammer-{player_id}">
-                <source src="data:audio/wav;base64,{scammer_b64}" type="audio/wav">
-            </audio>
-            <audio id="agent-{player_id}">
-                <source src="data:audio/wav;base64,{agent_b64}" type="audio/wav">
-            </audio>
-            <script>
-                (function() {{
-                    var scammerAudio = document.getElementById('scammer-{player_id}');
-                    var agentAudio = document.getElementById('agent-{player_id}');
-                    var statusDiv = document.getElementById('status-{player_id}');
-                    var playBtn = document.getElementById('play-btn-{player_id}');
-                    var playerDiv = document.getElementById('audio-player-{player_id}');
-                    
-                    function playSequence() {{
-                        playBtn.style.display = 'none';
-                        statusDiv.innerHTML = '🔴 Scammer speaking...';
-                        scammerAudio.play();
-                    }}
-                    
-                    scammerAudio.addEventListener('ended', function() {{
-                        statusDiv.innerHTML = '🟢 AI Agent responding...';
-                        agentAudio.play();
-                    }});
-                    
-                    agentAudio.addEventListener('ended', function() {{
-                        statusDiv.innerHTML = '✅ Conversation complete';
-                        setTimeout(function() {{
-                            if (playerDiv) playerDiv.style.display = 'none';
-                        }}, 2000);
-                    }});
-                    
-                    playBtn.addEventListener('click', playSequence);
-                    setTimeout(function() {{ playSequence(); }}, 200);
-                }})();
-            </script>
-            """
-            st.markdown(sequential_html, unsafe_allow_html=True)
-
-        st.session_state.play_sequential = False
+    # Skip the audio player UI in Chat Mode - audio will play inline if enabled
 
     # SIDEBAR
     with st.sidebar:
@@ -460,21 +403,15 @@ with tab1:
 
                 if msg["role"] == "scammer":
                     voice_badge = '<span class="voice-badge">🔊 Voice</span>' if msg.get("has_audio") else ""
-                    # RANDOMNESS: Display dynamic metadata
-                    metadata_html = ""
-                    if msg.get("metadata"):
-                        meta = msg["metadata"]
-                        metadata_html = f'''
-                        <div style="font-size:0.7rem; color:#888; margin-top:6px; padding-top:6px; border-top:1px solid #333;">
-                            📊 {meta.get('caller_background', '')} | ⚠️ {meta.get('risk_indicator', '')} | 
-                            🎯 Confidence: {meta.get('confidence', 0)}% | ⏰ {meta.get('timestamp', '')}
-                        </div>
-                        '''
+                    # Clean content - remove any HTML that might have been stored
+                    content = msg['content']
+                    if '<div' in content:
+                        content = content.split('<div')[0].strip()
+                    
                     st.markdown(f"""
                     <div class="scammer-msg">
                         <div class="label">🔴 SCAMMER {voice_badge}</div>
-                        {msg['content']}
-                        {metadata_html}
+                        {content}
                     </div>""", unsafe_allow_html=True)
                     
                     if msg.get("audio") and not is_latest:
@@ -485,24 +422,19 @@ with tab1:
 
                 else:
                     voice_badge = '<span class="voice-badge">🔊 Voice</span>' if msg.get("has_audio") else ""
-                    # RANDOMNESS: Display analysis metadata
-                    analysis_html = ""
-                    if msg.get("analysis"):
-                        ana = msg["analysis"]
-                        analysis_html = f'''
-                        <div style="font-size:0.7rem; color:#888; margin-top:6px; padding-top:6px; border-top:1px solid #2a3a2a;">
-                            🔬 {ana.get('detail', '')} | ⚡ Processed in {ana.get('processing_time', 0)}s | ⏰ {ana.get('timestamp', '')}
-                        </div>
-                        '''
+                    # Clean content - remove any HTML that might have been stored
+                    content = msg['content']
+                    if '<div' in content:
+                        content = content.split('<div')[0].strip()
+                    
                     st.markdown(f"""
                     <div class="agent-msg">
                         <div class="label">🟢 AI AGENT ({st.session_state.current_persona}) {voice_badge}</div>
-                        {msg['content']}
+                        {content}
                         <div style="margin-top:6px">
                             <span class="strategy-badge">Strategy: {msg.get('strategy','')}</span>
                             <span class="phase-badge">Phase: {msg.get('phase','')}</span>
                         </div>
-                        {analysis_html}
                     </div>""", unsafe_allow_html=True)
                     
                     if msg.get("audio") and not is_latest:
@@ -864,31 +796,27 @@ with tab2:
             for msg in st.session_state.conversation:
                 if msg["role"] == "scammer":
                     # This is USER's raw voice input (they act as scammer)
+                    content = msg['content']
+                    if '<div' in content:
+                        content = content.split('<div')[0].strip()
                     st.markdown(f"""
                     <div class="scammer-msg">
                         <div class="label">🔴 YOU (Scammer)</div>
-                        {msg['content']}
-                        <div style="font-size:0.7rem; color:#888; margin-top:6px;">⏰ {msg.get('timestamp', '')}</div>
+                        {content}
                     </div>""", unsafe_allow_html=True)
                 else:
                     # This is AI's response (playing as victim)
-                    analysis_html = ""
-                    if msg.get("analysis"):
-                        ana = msg["analysis"]
-                        analysis_html = f'''
-                        <div style="font-size:0.7rem; color:#888; margin-top:6px; padding-top:6px; border-top:1px solid #2a3a2a;">
-                            🔬 {ana.get('detail', '')} | ⚡ Processed in {ana.get('processing_time', 0)}s | ⏰ {ana.get('timestamp', '')}
-                        </div>
-                        '''
+                    content = msg['content']
+                    if '<div' in content:
+                        content = content.split('<div')[0].strip()
                     st.markdown(f"""
                     <div class="agent-msg">
                         <div class="label">🟢 AI VICTIM ({st.session_state.current_persona})</div>
-                        {msg['content']}
+                        {content}
                         <div style="margin-top:6px">
                             <span class="strategy-badge">Strategy: {msg.get('strategy','')}</span>
                             <span class="phase-badge">Phase: {msg.get('phase','')}</span>
                         </div>
-                        {analysis_html}
                     </div>""", unsafe_allow_html=True)
             
             st.divider()

@@ -8,6 +8,7 @@ ScamBait AI is an **autonomous AI-powered honeypot** that engages scammers in re
 
 ---
 
+
 ## 🎯 The Problem
 
 India faces a massive fraud crisis:
@@ -15,6 +16,11 @@ India faces a massive fraud crisis:
 - **₹60+ crore lost** to fraudulent calls every day
 - **3+ spam calls** per citizen per day
 - Current solutions only **detect and block** — they don't fight back
+
+---
+## 🚀 Live Demo
+
+**Try it now:** [https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/](https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/)
 
 ---
 
@@ -77,10 +83,6 @@ Automatically detects and extracts:
 - Ready for law enforcement submission
 
 ---
-
-## 🚀 Live Demo
-
-**Try it now:** [https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/](https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/)
 
 ### Demo Call Mode Instructions:
 1. Click **"📞 Demo Call Mode"** tab

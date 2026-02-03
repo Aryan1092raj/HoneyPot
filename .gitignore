@@ -32,6 +32,7 @@ recording.wav
 
 # Virtual environment
 venv/
+venv-api/
 .venv/
 env/
 

@@ -323,11 +323,23 @@ async def honeypot_post(
         # Extract metadata
         metadata = body.get("metadata") or {}
         
-        # Handle test requests with no message - return simple format
+        # Handle test requests with no message - return full format
         if not message or not message.strip():
             return {
                 "status": "success",
-                "reply": "Hello! This is ScamBait AI honeypot. Ready to engage scammers."
+                "reply": "Hello! This is ScamBait AI honeypot. Ready to engage scammers.",
+                "sessionId": session_id,
+                "scamDetected": False,
+                "extractedIntelligence": {
+                    "upiIds": [],
+                    "bankAccounts": [],
+                    "ifscCodes": [],
+                    "phoneNumbers": [],
+                    "phishingLinks": []
+                },
+                "agentStrategy": "READY",
+                "currentPhase": "initialization",
+                "messageCount": 0
             }
         
         # Validate message length
@@ -407,10 +419,22 @@ async def honeypot_post(
             # Clean up session after callback
             background_tasks.add_task(lambda: sessions.pop(session_id, None))
         
-        # Build response - hackathon expects simple format: status + reply
+        # Build full response (restoring original format that worked)
         return {
             "status": "success",
-            "reply": result["response"]
+            "reply": result["response"],
+            "sessionId": session_id,
+            "scamDetected": session["scam_detected"],
+            "extractedIntelligence": {
+                "upiIds": session["extracted_data"]["upi_ids"],
+                "bankAccounts": session["extracted_data"]["account_numbers"],
+                "ifscCodes": session["extracted_data"]["ifsc_codes"],
+                "phoneNumbers": session["extracted_data"]["phone_numbers"],
+                "phishingLinks": session["extracted_data"]["links"]
+            },
+            "agentStrategy": result["strategy"].get("strategy", ""),
+            "currentPhase": result["strategy"].get("new_phase", ""),
+            "messageCount": session["message_count"]
         }
         
     except Exception as e:

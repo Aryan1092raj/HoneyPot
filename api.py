@@ -3,9 +3,9 @@ ScamBait AI - FastAPI Backend
 Hackathon-compliant API endpoint that wraps existing agent logic
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict
 from datetime import datetime
 import uuid
@@ -58,6 +58,40 @@ HACKATHON_CALLBACK_URL = os.getenv(
     "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
 )
 
+# API Key for authentication
+VALID_API_KEY = os.getenv("HONEYPOT_API_KEY", "default-secret-key-change-me")
+
+# Rate limiting (simple in-memory tracker)
+request_counts = {}
+
+# ============================================================
+# AUTHENTICATION & VALIDATION
+# ============================================================
+
+async def verify_api_key(x_api_key: str = Header(..., description="API key for authentication")):
+    """Verify API key from request header"""
+    if x_api_key != VALID_API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "ApiKey"}
+        )
+    return x_api_key
+
+def validate_message_length(message: str, max_length: int = 5000):
+    """Validate message is not too long"""
+    if len(message) > max_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Message too long. Maximum {max_length} characters allowed."
+        )
+    if not message.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot be empty"
+        )
+    return message
+
 # ============================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================
@@ -65,9 +99,15 @@ HACKATHON_CALLBACK_URL = os.getenv(
 class HoneypotRequest(BaseModel):
     """Request model for honeypot interaction"""
     sessionId: str = Field(..., description="Unique session identifier")
-    message: str = Field(..., description="Scammer message")
+    message: str = Field(..., description="Scammer message", max_length=5000)
     conversationHistory: Optional[List[Dict]] = Field(default=[], description="Previous conversation")
     metadata: Optional[Dict] = Field(default={}, description="Additional metadata")
+    
+    @validator('message')
+    def validate_message_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Message cannot be empty')
+        return v.strip()
 
 class ExtractedIntelligence(BaseModel):
     """Extracted evidence from conversation"""
@@ -82,6 +122,7 @@ class HoneypotResponse(BaseModel):
     status: str = Field(default="success", description="Response status")
     reply: str = Field(..., description="Agent's response to scammer")
     sessionId: str = Field(..., description="Session identifier")
+    scamDetected: bool = Field(default=False, description="Whether scam was detected")
     extractedIntelligence: Optional[ExtractedIntelligence] = None
     agentStrategy: Optional[str] = None
     currentPhase: Optional[str] = None
@@ -118,6 +159,7 @@ def create_session(session_id: str, persona: str = "Elderly Teacher"):
             "links": []
         },
         "conversation": [],
+        "conversation_history": [],  # For agent's internal history
         "scam_detected": False
     }
     return sessions[session_id]
@@ -199,24 +241,40 @@ async def honeypot_get():
         }
     }
 
-@app.post("/api/honeypot", response_model=HoneypotResponse)
+@app.post("/api/honeypot", response_model=HoneypotResponse, dependencies=[Depends(verify_api_key)])
 async def honeypot_post(
     request: HoneypotRequest,
     background_tasks: BackgroundTasks
 ):
     """
     Main honeypot endpoint - receives scammer message, returns agent response
+    
+    Requires X-API-Key header for authentication
     """
     try:
+        # Validate message
+        validate_message_length(request.message)
+        
         # Get or create session
         session = get_session(request.sessionId)
         agent = session["agent"]
+        
+        # Load conversation history from request if provided, otherwise use session history
+        if request.conversationHistory and len(request.conversationHistory) > 0:
+            # Use provided history (for external callers)
+            agent.conversation_history = request.conversationHistory
+        else:
+            # Use session's internal history
+            agent.conversation_history = session.get("conversation_history", [])
         
         # Process scammer message with agentic logic
         result = agent.process(
             request.message,
             get_persona(session["persona"])
         )
+        
+        # Save updated conversation history back to session
+        session["conversation_history"] = agent.conversation_history
         
         # Extract intelligence
         extraction = extractor.get_summary(request.message)
@@ -269,6 +327,7 @@ async def honeypot_post(
             status="success",
             reply=result["response"],
             sessionId=request.sessionId,
+            scamDetected=session["scam_detected"],
             extractedIntelligence=ExtractedIntelligence(
                 upiIds=session["extracted_data"]["upi_ids"],
                 bankAccounts=session["extracted_data"]["account_numbers"],

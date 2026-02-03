@@ -24,6 +24,34 @@ India faces a massive fraud crisis:
 
 ---
 
+## 🔌 API Endpoint (Hackathon Submission)
+
+**Production API:** Available for hackathon evaluation
+
+**Authentication:** API key required via `X-API-Key` header
+
+**Endpoint:** `POST /api/honeypot`
+
+**Features:**
+- ✅ API key authentication
+- ✅ Multi-turn conversation support with history
+- ✅ Autonomous scam detection and engagement
+- ✅ Real-time intelligence extraction
+- ✅ Automatic callback to hackathon system
+- ✅ Structured JSON response
+
+**Documentation:** See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for complete API reference
+
+**Quick Test:**
+```bash
+curl -X POST http://localhost:8000/api/honeypot \
+  -H "X-API-Key: your-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "test-1", "message": "Your bank account is blocked!"}'
+```
+
+---
+
 ## 💡 Our Solution
 
 **ScamBait AI** doesn't just detect scams — it **traps them.**
@@ -126,14 +154,22 @@ source venv/bin/activate  # Linux/Mac
 .\venv\Scripts\activate   # Windows
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-ui.txt    # For Streamlit UI
+pip install -r requirements-api.txt   # For API server
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add: GROQ_API_KEY=your_key_here
+# Edit .env and add:
+#   GROQ_API_KEY=your_groq_key_here
+#   HONEYPOT_API_KEY=your_secure_api_key_here
 
-# Run locally
+# Run Streamlit UI
 streamlit run app.py
+
+# OR run API server
+python api.py
+# API available at http://localhost:8000
+# Docs at http://localhost:8000/docs
 ```
 
 ---
@@ -143,11 +179,19 @@ streamlit run app.py
 ```
 scamhoneypot/
 ├── app.py                 # Main Streamlit UI (Chat + Demo Call modes)
+├── api.py                 # FastAPI backend for hackathon submission
 ├── agent.py               # Agentic AI logic (strategy decisions)
 ├── personas.py            # Persona definitions with Hinglish
 ├── extractor.py           # Evidence extraction patterns
 ├── database.py            # SQLite conversation logging
 ├── tts_handler.py         # Groq TTS integration
+├── stt_handler.py         # Groq STT integration
+├── requirements-ui.txt    # UI dependencies
+├── requirements-api.txt   # API dependencies
+├── .env.example           # Environment template
+├── API_DOCUMENTATION.md   # Complete API reference
+└── README.md              # This file
+```
 ├── requirements.txt       # Python dependencies
 ├── .env                   # API keys (not in repo)
 ├── .gitignore             # Git exclusions

@@ -80,15 +80,12 @@ async def verify_api_key(x_api_key: str = Header(..., description="API key for a
 
 def validate_message_length(message: str, max_length: int = 5000):
     """Validate message is not too long"""
+    if not message:
+        return message  # Let the endpoint handle empty messages
     if len(message) > max_length:
         raise HTTPException(
             status_code=400,
             detail=f"Message too long. Maximum {max_length} characters allowed."
-        )
-    if not message.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Message cannot be empty"
         )
     return message
 
@@ -98,16 +95,23 @@ def validate_message_length(message: str, max_length: int = 5000):
 
 class HoneypotRequest(BaseModel):
     """Request model for honeypot interaction"""
-    sessionId: str = Field(..., description="Unique session identifier")
-    message: str = Field(..., description="Scammer message", max_length=5000)
+    sessionId: Optional[str] = Field(default=None, description="Unique session identifier")
+    message: Optional[str] = Field(default="", description="Scammer message", max_length=5000)
     conversationHistory: Optional[List[Dict]] = Field(default=[], description="Previous conversation")
     metadata: Optional[Dict] = Field(default={}, description="Additional metadata")
     
     @validator('message')
     def validate_message_not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError('Message cannot be empty')
-        return v.strip()
+        if v and not v.strip():
+            raise ValueError('Message cannot be empty or only whitespace')
+        return v.strip() if v else ""
+    
+    @validator('sessionId')
+    def generate_session_id_if_missing(cls, v):
+        if not v:
+            import uuid
+            return f"auto-{uuid.uuid4().hex[:8]}"
+        return v
 
 class ExtractedIntelligence(BaseModel):
     """Extracted evidence from conversation"""
@@ -252,6 +256,19 @@ async def honeypot_post(
     Requires X-API-Key header for authentication
     """
     try:
+        # Handle test requests with no message
+        if not request.message or not request.message.strip():
+            return HoneypotResponse(
+                status="success",
+                reply="Hello! This is ScamBait AI honeypot. Please send a scam message to test the system.",
+                sessionId=request.sessionId,
+                scamDetected=False,
+                extractedIntelligence=ExtractedIntelligence(),
+                agentStrategy="TEST",
+                currentPhase="initialization",
+                messageCount=0
+            )
+        
         # Validate message
         validate_message_length(request.message)
         

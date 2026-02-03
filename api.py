@@ -163,7 +163,8 @@ def create_session(session_id: str, persona: str = "Elderly Teacher"):
             "account_numbers": [],
             "ifsc_codes": [],
             "phone_numbers": [],
-            "links": []
+            "links": [],
+            "suspicious_keywords": []  # Added for hackathon callback
         },
         "conversation": [],
         "conversation_history": [],  # For agent's internal history
@@ -177,25 +178,40 @@ def get_session(session_id: str):
         return create_session(session_id)
     return sessions[session_id]
 
+def extract_suspicious_keywords(message: str) -> list:
+    """Extract suspicious/scam keywords from message"""
+    keywords = [
+        "urgent", "verify now", "account blocked", "suspended", "immediately",
+        "bank", "upi", "otp", "kyc", "pan", "aadhaar", "blocked", "freeze",
+        "verify", "update", "link", "click", "transfer", "payment", "refund",
+        "lottery", "prize", "winner", "lucky", "claim", "offer", "free",
+        "police", "court", "legal", "arrest", "case", "fraud", "crime"
+    ]
+    found = []
+    message_lower = message.lower()
+    for keyword in keywords:
+        if keyword in message_lower:
+            found.append(keyword)
+    return found
+
 async def send_callback(session_id: str, session_data: dict):
-    """Send final results to hackathon endpoint"""
+    """Send final results to hackathon endpoint - MANDATORY for evaluation"""
     try:
-        # Prepare callback payload
+        # Prepare callback payload matching EXACT hackathon spec
         payload = {
             "sessionId": session_id,
             "scamDetected": session_data["scam_detected"],
             "totalMessagesExchanged": session_data["message_count"],
             "extractedIntelligence": {
-                "upiIds": session_data["extracted_data"]["upi_ids"],
                 "bankAccounts": session_data["extracted_data"]["account_numbers"],
-                "ifscCodes": session_data["extracted_data"]["ifsc_codes"],
+                "upiIds": session_data["extracted_data"]["upi_ids"],
+                "phishingLinks": session_data["extracted_data"]["links"],
                 "phoneNumbers": session_data["extracted_data"]["phone_numbers"],
-                "phishingLinks": session_data["extracted_data"]["links"]
+                "suspiciousKeywords": session_data["extracted_data"].get("suspicious_keywords", [])
             },
-            "agentNotes": f"AI Agent ({session_data['persona']}) successfully engaged scammer using agentic strategies. "
+            "agentNotes": f"AI Agent ({session_data['persona']}) engaged scammer using agentic strategies. "
                          f"Completed {session_data['message_count']} message exchanges. "
-                         f"Extracted {sum(len(v) for v in session_data['extracted_data'].values())} evidence items.",
-            "conversationLog": session_data["conversation"]
+                         f"Extracted {sum(len(v) for v in session_data['extracted_data'].values())} evidence items."
         }
         
         # Send async POST request
@@ -341,6 +357,12 @@ async def honeypot_post(
         
         # Extract intelligence
         extraction = extractor.get_summary(message)
+        
+        # Extract suspicious keywords
+        keywords = extract_suspicious_keywords(message)
+        if keywords:
+            session["extracted_data"]["suspicious_keywords"].extend(keywords)
+            session["extracted_data"]["suspicious_keywords"] = list(set(session["extracted_data"]["suspicious_keywords"]))
         
         # Update session data
         session["message_count"] += 1

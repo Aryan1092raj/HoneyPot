@@ -94,11 +94,14 @@ def validate_message_length(message: str, max_length: int = 5000):
 # ============================================================
 
 class HoneypotRequest(BaseModel):
-    """Request model for honeypot interaction"""
-    sessionId: Optional[str] = Field(default=None, description="Unique session identifier")
+    """Request model for honeypot interaction - accepts both camelCase and snake_case"""
+    sessionId: Optional[str] = Field(default=None, alias="session_id", description="Unique session identifier")
     message: Optional[str] = Field(default="", description="Scammer message", max_length=5000)
-    conversationHistory: Optional[List[Dict]] = Field(default=[], description="Previous conversation")
+    conversationHistory: Optional[List[Dict]] = Field(default=[], alias="conversation_history", description="Previous conversation")
     metadata: Optional[Dict] = Field(default={}, description="Additional metadata")
+    
+    class Config:
+        populate_by_name = True  # Accept both field name and alias
     
     @validator('message')
     def validate_message_not_empty(cls, v):

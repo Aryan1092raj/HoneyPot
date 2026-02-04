@@ -290,8 +290,17 @@ async def honeypot_post(
         # Parse raw JSON body
         try:
             body = await request.json()
-        except:
-            body = {}
+        except Exception as parse_error:
+            print(f"JSON parse error: {parse_error}")
+            return {
+                "status": "error",
+                "reply": f"Invalid JSON: {str(parse_error)}"
+            }
+        
+        # Debug logging
+        print(f"[DEBUG] Received body: {body}")
+        print(f"[DEBUG] Body type: {type(body)}")
+        print(f"[DEBUG] Body keys: {body.keys() if isinstance(body, dict) else 'not a dict'}")
         
         # Extract sessionId
         session_id = (

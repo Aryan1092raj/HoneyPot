@@ -243,12 +243,14 @@ async def root():
     }
 
 @app.get("/health")
+@app.head("/health")  # Add HEAD method support
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for monitoring services"""
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "active_sessions": len(sessions)
+        "service": "ScamBait AI Honeypot",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat()
     }
 
 @app.get("/api/honeypot")

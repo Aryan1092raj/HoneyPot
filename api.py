@@ -229,6 +229,7 @@ async def send_callback(session_id: str, session_data: dict):
 # ============================================================
 
 @app.get("/")
+@app.head("/")  # Add HEAD method support for UptimeRobot
 async def root():
     """API health check"""
     return {
@@ -254,6 +255,7 @@ async def health_check():
     }
 
 @app.get("/api/honeypot")
+@app.get("/api/endpoint")  # Alias for tester compatibility
 async def honeypot_get():
     """GET endpoint - API status"""
     return {
@@ -267,6 +269,7 @@ async def honeypot_get():
     }
 
 @app.post("/api/honeypot", dependencies=[Depends(verify_api_key)])
+@app.post("/api/endpoint", dependencies=[Depends(verify_api_key)])  # Alias for tester compatibility
 async def honeypot_post(
     request: Request,
     background_tasks: BackgroundTasks

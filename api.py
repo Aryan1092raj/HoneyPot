@@ -416,10 +416,10 @@ async def honeypot_post(
             risk_level=extraction["risk_level"]
         )
         
-        # Check if session should end (20 messages or high extraction)
+        # Check if session should end (end after 5 messages or 5 intelligence items to avoid timeouts)
         should_end = (
-            session["message_count"] >= 20 or
-            sum(len(v) for v in session["extracted_data"].values()) >= 10
+            session["message_count"] >= 5 or
+            sum(len(v) for v in session["extracted_data"].values()) >= 5
         )
         
         if should_end:

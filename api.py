@@ -328,6 +328,13 @@ async def send_callback(session_id: str, session: dict):
         # Don't retry - already marked as sent
 
 # ============================================================
+# SUSPICION REPLY (before full confirmation)
+# ============================================================
+
+def get_suspicion_reply():
+    return "Ji? Aap kaun bol rahe ho? Mujhe thoda doubt ho raha hai, clear bataiye."
+
+# ============================================================
 # MAIN ENDPOINT - /api/honeypot
 # ============================================================
 
@@ -392,7 +399,11 @@ async def honeypot(request: Request, background_tasks: BackgroundTasks):
     if session["scam_detected"]:
         reply = get_llm_response(session, message)
     else:
-        reply = "Hello. How can I help you today?"
+        keyword_hits = sum(1 for kw in SCAM_KEYWORDS if kw in message.lower())
+        if keyword_hits >= 2:
+            reply = get_suspicion_reply()
+        else:
+            reply = "Hello. How can I help you today?"
     
     # STEP 4: Update session
     session["messages_exchanged"] += 1

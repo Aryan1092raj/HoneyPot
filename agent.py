@@ -54,145 +54,113 @@ class HoneypotAgent:
             normalized.append({"role": role, "content": str(content)})
         return normalized
 
-    def decide_strategy(self, scammer_message: str) -> dict:
-        """AGENTIC LAYER: AI decides HOW to respond"""
-        strategy_prompt = f"""
-        You are the strategy layer for a scam honeypot. You decide HOW the AI persona (Kamla Devi, 62-year-old retired teacher from Jaipur) should respond.
+    def generate_response(self, scammer_message: str) -> str:
+        """Generate response with SINGLE LLM call - no separate strategy layer"""
         
-        Current engagement phase: {self.engagement_phase}
-        Messages so far: {len(self.conversation_history) // 2}
-        Scammer just said: "{scammer_message}"
-        Data extracted so far: {self.extracted_data}
+        # Simple phase detection based on message count
+        msg_count = len(self.conversation_history) // 2
         
-        Pick ONE strategy:
-        1. STALL - Pretend confusion, search for glasses/pen, ask to repeat. Use when: early conversation, buying time.
-        2. TRUST - Sound vulnerable and believing. Mention pension, FD, loneliness. Use when: building rapport.
-        3. EXTRACT - Innocently ask for their details ("woh number phir se bolo na?"). Use when: they've mentioned any financial info.
-        4. CONFIRM - Repeat back what they said to get clearer evidence ("9876... aage kya tha?"). Use when: they gave partial info.
-        5. ESCALATE - Move to next phase. Almost comply but pause with doubt. Use when: ready to progress.
+        if msg_count <= 3:
+            phase_instruction = "Be confused and suspicious. Ask who they are. Ask for their name and which branch/company."
+        elif msg_count <= 8:
+            phase_instruction = "Stall for time naturally. Look for pen, glasses. Ask them to repeat slowly. Mention checking with family."
+        else:
+            phase_instruction = "Almost comply but pause with doubt. Ask for their UPI ID, phone number, or details 'to verify'. Stay in character."
         
-        Phase progression: trust_building → confusion → extraction → evidence_collection
-        
-        Respond ONLY in this exact JSON format, nothing else:
-        {{"strategy": "STALL", "reason": "brief reason", "new_phase": "trust_building"}}
-        """
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": strategy_prompt}],
-            temperature=0.3,
-            max_tokens=150
-        )
-
-        try:
-            text = response.choices[0].message.content.strip()
-            # Clean any markdown fences
-            text = text.replace("```json", "").replace("```", "").strip()
-            strategy = json.loads(text)
-        except (json.JSONDecodeError, Exception):
-            strategy = {
-                "strategy": "TRUST",
-                "reason": "fallback - JSON parse failed",
-                "new_phase": self.engagement_phase
-            }
-
-        return strategy
-
-    def generate_response(self, scammer_message: str, strategy: dict) -> str:
-        """Generate response based on decided strategy"""
-
-        strategy_instructions = {
-            "STALL": "Stall naturally. Look for glasses, search for pen, ask phone number to write down. Say 'ek minute beta...' or 'ruko pen dhundhti hoon'. Be physically slow, not mentally absent.",
-            "TRUST": "Be vulnerable and trusting. Mention pension (₹38,000), FD savings, or that you live alone. Sound lonely. Say 'aap toh bahut helpful ho beta...' Express worry about losing money.",
-            "EXTRACT": "Innocently ask for THEIR details. 'Aapka naam kya tha? Likhna padega na...' 'Woh UPI ID phir se bolo na slowly?' 'Branch ka number do main verify karti hoon.' Ask like a confused aunty, not an investigator.",
-            "CONFIRM": "Repeat back partial details to get full ones. 'Woh number 9876 se shuru tha na? Aage kya tha?' 'Aapne bola scammer@... kya tha last mein?' Get them to repeat and clarify.",
-            "ESCALATE": "Almost comply but pause. 'Haan PhonePe khol rahi hoon... yeh pin wala screen aaya hai... par Rohit bolta tha...' Get VERY close to doing what they ask, then hesitate."
-        }
-
         messages = [
             {
                 "role": "system",
-                "content": f"""
-                {self.persona}
-                
-                CURRENT STRATEGY: {strategy['strategy']}
-                INSTRUCTION: {strategy_instructions.get(strategy['strategy'], 'Respond naturally.')}
-                Current phase: {strategy.get('new_phase', 'trust_building')}
-                
-                CRITICAL RULES:
-                - Respond as Kamla Devi in 1-2 sentences MAX. Short, messy, natural Hinglish.
-                - Mix Hindi-English in SAME sentence ("Haan woh OTP aata hai na green message mein?")
-                - Use: "arey", "beta", "haan haan", "ek minute", "ruko ruko" naturally
-                - Do NOT break character or mention AI/system
-                - Do NOT use formal English sentences
-                - Do NOT explain reasoning or write "The user wants..."
-                - Do NOT use bullet points, lists, or structured text
-                - Reply ONLY with Kamla Devi's messy natural dialogue
-                """
+                "content": f"""{self.persona}
+
+CURRENT PHASE: {phase_instruction}
+
+CRITICAL RULES:
+- Respond in 1-2 sentences MAX
+- Mix Hindi-English naturally in same sentence
+- Use natural filler words: "arey", "beta", "haan", "ek minute"
+- Ask innocent questions that make them reveal details
+- NEVER say "I will", "Let me", "I should", "The user", "The scammer"
+- NEVER break character or mention AI
+- Reply ONLY with natural dialogue, nothing else"""
             }
         ]
-
-        # Add conversation history (limit to last 4 messages to avoid context overflow)
+        
+        # Add conversation history (last 4 messages only)
         normalized = self._normalize_history(self.conversation_history)
         messages.extend(normalized[-4:] if len(normalized) > 4 else normalized)
-
+        
         # Add current message
         messages.append({"role": "user", "content": str(scammer_message or "")})
-
+        
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
-            temperature=0.7,
-            max_tokens=100  # Reduced to keep responses short
+            temperature=0.75,
+            max_tokens=80  # Keep responses very short
         )
-
-        # Clean up response - remove any reasoning leakage
-        reply = response.choices[0].message.content
         
-        # Strip common reasoning patterns that shouldn't appear
-        bad_patterns = [
-            "The user wants", "We need to output", "The instructions:", 
-            "The scenario:", "Output ONLY", "realistic scammer",
-            "The conversation:", "Thus we need", "Here is", "Here's the",
-            "As an AI", "As a language model", "I will", "I need to",
-            "Let me", "I should", "The scammer", "The victim",
-            "honeypot", "the agent"
+        reply = response.choices[0].message.content.strip()
+        
+        # Strict sanitization - block any metadata leakage
+        forbidden_patterns = [
+            "the user", "the scammer", "user wants", "scammer wants",
+            "output format", "instructions", "i will", "i need to", "let me", 
+            "i should", "as an ai", "as a language model", "i'm an ai",
+            "the victim", "the agent", "honeypot", "generate", "scenario",
+            "here is", "here's the", "respond with", "the conversation"
         ]
-        for pattern in bad_patterns:
-            if pattern.lower() in reply.lower():
-                # Response is corrupted, use fallback
-                reply = "Arey beta samajh nahi aaya... phone pe sab chhota likha hai... phir se bolo na slowly?"
-                break
+        
+        reply_lower = reply.lower()
+        for pattern in forbidden_patterns:
+            if pattern in reply_lower:
+                # Metadata leaked - use safe fallback
+                return "Arey beta... samajh nahi aaya... phone pe dikkat hai... phir se bolo na?"
+        
+        # Block overly long responses (likely reasoning leak)
+        if len(reply) > 200:
+            return "Haan haan... par thoda slow bolo na... pen se likhna hai..."
         
         return reply
 
-    def process(self, scammer_message: str, persona_prompt: str) -> dict:
+    def process(self, scammer_message: str) -> dict:
         """
-        MAIN AGENTIC LOOP:
-        1. Decide strategy
-        2. Generate response
-        3. Update state
+        MAIN PROCESSING LOOP (SINGLE LLM CALL):
+        1. Auto-select persona if not set
+        2. Generate response with phase detection
+        3. Update conversation history
         """
-        # Step 1: AI decides strategy
-        strategy = self.decide_strategy(scammer_message)
-        self.engagement_phase = strategy.get("new_phase", self.engagement_phase)
-
-        # Step 2: Generate response
-        response = self.generate_response(scammer_message, strategy)
-
-        # Step 3: Update history
+        # Auto-select persona if not already set
+        if not self.persona:
+            from personas import get_optimal_persona
+            persona_name, self.persona = get_optimal_persona(scammer_message)
+        
+        # Generate response (single LLM call with built-in phase logic)
+        response = self.generate_response(scammer_message)
+        
+        # Update history
         self.conversation_history.append({"role": "user", "content": scammer_message})
         self.conversation_history.append({"role": "assistant", "content": response})
-
+        
+        # Calculate phase for tracking
+        msg_count = len(self.conversation_history) // 2
+        if msg_count <= 3:
+            self.engagement_phase = "trust_building"
+        elif msg_count <= 8:
+            self.engagement_phase = "extraction"
+        else:
+            self.engagement_phase = "evidence_collection"
+        
         return {
             "response": response,
-            "strategy": strategy,
-            "phase": self.engagement_phase
+            "phase": self.engagement_phase,
+            "message_count": msg_count
         }
 
     def reset(self):
+        """Reset conversation state and persona"""
         self.conversation_history = []
         self.engagement_phase = "trust_building"
+        self.persona = ""  # Clear persona for auto-selection
         self.extracted_data = {
             "upi_ids": [],
             "account_numbers": [],
@@ -208,17 +176,23 @@ class HoneypotAgent:
 
 if __name__ == "__main__":
     agent = HoneypotAgent()
-    agent.set_persona("""You are Kamla Devi, a 62-year-old retired teacher from Jaipur. 
-    Widow, son Rohit in Bangalore. You speak natural Hinglish. You are confused by technology.""")
     
     print("✅ API Key loaded successfully!")
-    print("✅ Testing conversation...\n")
+    print("✅ Testing auto-persona selection...\n")
     
+    # Test 1: KYC scam (should auto-select Kamla Devi)
+    print("Test 1: KYC Scam")
     result = agent.process(
-        "Hello ma'am, I'm calling from SBI. Your account will be blocked today.",
-        agent.persona
+        "Hello ma'am, I'm calling from SBI. Your account will be blocked today."
     )
-    
-    print(f"Strategy: {result['strategy']}")
     print(f"Phase: {result['phase']}")
+    print(f"Messages: {result['message_count']}")
+    print(f"Response: {result['response']}")
+    
+    # Test 2: Lottery scam (should auto-select Amit Verma)
+    print("\nTest 2: Lottery Scam")
+    agent.reset()
+    result = agent.process(
+        "Congratulations! You won ₹25 lakh lottery! Pay ₹5000 to claim."
+    )
     print(f"Response: {result['response']}")

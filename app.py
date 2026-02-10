@@ -56,24 +56,6 @@ st.markdown("""
         margin-bottom: 10px;
     }
     .agent-msg .label { color: #4CAF50; font-weight: bold; font-size: 0.85rem; margin-bottom: 4px; }
-    .strategy-badge {
-        display: inline-block;
-        background: #2a2a4a;
-        color: #a0a0ff;
-        border-radius: 12px;
-        padding: 2px 10px;
-        font-size: 0.75rem;
-        margin-top: 4px;
-    }
-    .phase-badge {
-        display: inline-block;
-        background: #2a3a2a;
-        color: #a0ffa0;
-        border-radius: 12px;
-        padding: 2px 10px;
-        font-size: 0.75rem;
-        margin-left: 6px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -124,10 +106,7 @@ if 'all_extracted' not in st.session_state:
         "upi_ids": [], "account_numbers": [],
         "ifsc_codes": [], "phone_numbers": [], "links": []
     }
-if 'current_strategy' not in st.session_state:
-    st.session_state.current_strategy = {}
-if 'current_phase' not in st.session_state:
-    st.session_state.current_phase = "trust_building"
+# Removed current_strategy and current_phase - internal metadata that shouldn't leak
 
 # ============================================================
 # HEADER
@@ -168,8 +147,7 @@ with st.sidebar:
             "upi_ids": [], "account_numbers": [],
             "ifsc_codes": [], "phone_numbers": [], "links": []
         }
-        st.session_state.current_strategy = {}
-        st.session_state.current_phase = "trust_building"
+        # No internal metadata to reset
         st.rerun()
     
     if st.button("🗑️ Clear All Data", use_container_width=True, type="secondary"):
@@ -183,13 +161,6 @@ with st.sidebar:
 col_chat, col_intel = st.columns([3, 2])
 
 with col_chat:
-    phase_labels = {
-        "trust_building": "🌱 Trust Building",
-        "confusion": "😵 Feigned Confusion",
-        "extraction": "💰 Extraction Phase",
-        "evidence_collection": "🔍 Evidence Collection"
-    }
-    st.markdown(f"**Active Phase:** {phase_labels.get(st.session_state.current_phase, st.session_state.current_phase)}")
     st.header("💬 Conversation")
     
     if st.session_state.conversation:
@@ -205,10 +176,6 @@ with col_chat:
                 <div class="agent-msg">
                     <div class="label">🟢 AI Agent ({st.session_state.current_persona})</div>
                     {msg['content']}
-                    <div style="margin-top:6px">
-                        <span class="strategy-badge">Strategy: {msg.get('strategy','')}</span>
-                        <span class="phase-badge">Phase: {msg.get('phase','')}</span>
-                    </div>
                 </div>""", unsafe_allow_html=True)
                 
                 if msg.get('analysis'):
@@ -234,35 +201,27 @@ with col_chat:
             "timestamp": datetime.now().strftime("%H:%M:%S")
         })
         
-        # 2. Process with agent
+        # 2. Process with agent (auto-selects persona on first message)
         if len(st.session_state.conversation) == 1:
             st.session_state.agent.set_persona(get_persona(st.session_state.current_persona))
         
         with st.spinner(random.choice(PROCESSING_MESSAGES) + "..."):
             time.sleep(random.uniform(0.3, 0.8))
-            result = st.session_state.agent.process(
-                user_input,
-                get_persona(st.session_state.current_persona)
-            )
+            result = st.session_state.agent.process(user_input)
         
         analysis_note = random.choice(ANALYSIS_DETAILS)
         processing_time = round(random.uniform(0.8, 1.9), 2)
         
-        # 3. Add agent response
+        # 3. Add agent response (no internal metadata exposed)
         st.session_state.conversation.append({
             "role": "agent",
             "content": result["response"],
-            "strategy": result["strategy"].get("strategy", ""),
-            "phase": result["strategy"].get("new_phase", ""),
             "analysis": {
                 "detail": analysis_note,
                 "processing_time": processing_time,
                 "timestamp": datetime.now().strftime("%H:%M:%S")
             }
         })
-        
-        st.session_state.current_phase = result["strategy"].get("new_phase", "trust_building")
-        st.session_state.current_strategy = result["strategy"]
         
         # 4. Extract intelligence
         extraction = st.session_state.extractor.get_summary(user_input)
@@ -277,7 +236,7 @@ with col_chat:
             persona=st.session_state.current_persona,
             scammer_message=user_input,
             agent_response=result["response"],
-            strategy=result["strategy"],
+            strategy={"phase": result.get("phase", "unknown"), "messages": result.get("message_count", 0)},
             extracted_data=extraction["extracted"],
             risk_level=extraction["risk_level"]
         )

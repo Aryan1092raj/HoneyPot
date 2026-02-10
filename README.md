@@ -1,347 +1,371 @@
-# 🕵️ ScamBait AI - Autonomous Scam Honeypot System
+# 🕵️ ScamBait AI - Autonomous Scam Honeypot
 
-**Fighting India's ₹60 Crore Daily Fraud Crisis with Agentic AI**
+**AI-powered system that engages scammers, extracts intelligence, and generates evidence for law enforcement**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/)
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/)
+[![API Docs](https://img.shields.io/badge/API-Live-success)](https://scambait-api.onrender.com/docs)
 
-ScamBait AI is an **autonomous AI-powered honeypot** that engages scammers in realistic conversations, wastes their time, and collects evidence for law enforcement. Built for the India AI Impact Buildathon.
-
----
-
-
-## 🎯 The Problem
-
-India faces a massive fraud crisis:
-- **5,00,000+ scam calls** flood India daily
-- **₹60+ crore lost** to fraudulent calls every day
-- **3+ spam calls** per citizen per day
-- Current solutions only **detect and block** — they don't fight back
-
----
-## 🚀 Live Demo
-
-**Try it now:** [https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/](https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/)
+*Built for India AI Impact Buildathon 2026 - Finalist*
 
 ---
 
-## 🔌 API Endpoint (Hackathon Submission)
+## The Problem
 
-**Production API:** Available for hackathon evaluation
+India loses **₹60 crore daily** to phone scams. Current solutions only detect and block scammers, but:
+- Scammers immediately target new victims
+- No intelligence is collected
+- No evidence for law enforcement
+- Same scammers operate indefinitely
 
-**Authentication:** API key required via `X-API-Key` header
+---
 
-**Endpoint:** `POST /api/honeypot`
+## Our Solution
 
-**Features:**
-- ✅ API key authentication
-- ✅ Multi-turn conversation support with history
-- ✅ Autonomous scam detection and engagement
-- ✅ Real-time intelligence extraction
-- ✅ Automatic callback to hackathon system
-- ✅ Structured JSON response
+ScamBait AI **doesn't just detect scams — it traps them.**
 
-**Documentation:** See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for complete API reference
+Instead of blocking, we:
+1. **Engage** scammers in realistic conversations
+2. **Extract** UPI IDs, bank accounts, and contact details
+3. **Waste** scammer time (saving 30+ potential victims per engagement)
+4. **Generate** law enforcement-ready evidence reports
 
-**Quick Test:**
+---
+
+## Key Features
+
+### 🎭 4 Specialized AI Personas
+
+Unlike single-persona systems, we deploy the right persona for each scam type:
+
+**Kamla Devi** (60, Retired Teacher)
+- Target: Bank KYC, Police threats
+- Speech: *"Arey beta, samajh nahi aaya... aap bank se ho na?"*
+- Tactic: Trusts authority, asks many questions
+
+**Amit Verma** (22, College Student)  
+- Target: Lottery scams, prize winnings
+- Speech: *"Bro seriously? ₹10 lakh? Par processing fee kitna hai?"*
+- Tactic: Excited but worried about parents
+
+**Rajesh Kumar** (45, Business Owner)
+- Target: Investment schemes, business loans
+- Speech: *"SEBI registered hai? Company registration number do"*
+- Tactic: Asks for documentation and proof
+
+**Priya Sharma** (28, Marketing Executive)
+- Target: Credit cards, tech scams
+- Speech: *"Send email from official domain. I'll verify on website"*
+- Tactic: Smart questions, screenshot threats
+
+### 🤖 Autonomous Intelligence
+
+- **Automatic persona selection** based on scam type detection
+- **Multi-phase engagement**: Trust building → Confusion → Extraction → Evidence collection
+- **Adaptive strategies**: STALL, TRUST, EXTRACT, CONFIRM, ESCALATE
+- **Real-time intelligence extraction**: UPI IDs, bank accounts, phone numbers, links
+
+### 🔊 Voice Capabilities
+
+- Text-to-speech with 4 distinct voices (Groq Orpheus)
+- Natural Hinglish speech patterns
+- Emotion control (confused, confident, nervous)
+
+---
+
+## Live Deployments
+
+### Interactive Demo (Public)
+**URL:** https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/
+
+Features:
+- Chat mode for manual testing
+- Demo call mode with simulated incoming calls
+- Live intelligence extraction dashboard
+- Voice synthesis
+- Evidence report generation
+
+### Production API (Hackathon Submission)
+**URL:** https://scambait-api.onrender.com/api/honeypot  
+**Docs:** https://scambait-api.onrender.com/docs
+
+Quick test:
 ```bash
-curl -X POST http://localhost:8000/api/honeypot \
-  -H "X-API-Key: your-key-here" \
+curl -X POST "https://scambait-api.onrender.com/api/honeypot" \
   -H "Content-Type: application/json" \
-  -d '{"sessionId": "test-1", "message": "Your bank account is blocked!"}'
+  -d '{
+    "sessionId": "test-001",
+    "message": {"text": "You won ₹10 lakh lottery!"}
+  }'
+```
+
+Response:
+```json
+{
+  "status": "success",
+  "reply": "Arey waah! Sach mein? Par processing fee kitna hai yaar?"
+}
 ```
 
 ---
 
-## 💡 Our Solution
+## How It Works
 
-**ScamBait AI** doesn't just detect scams — it **traps them.**
+### Example: Lottery Scam
 
-### How It Works:
-1. User receives scam call and detects it's fraudulent
-2. Hands off conversation to AI agent
-3. AI pretends to be a vulnerable person (elderly teacher, student, etc.)
-4. AI **autonomously decides strategies** to keep scammer engaged
-5. While talking, AI **secretly extracts evidence**: UPI IDs, bank accounts, phishing links
-6. System logs everything and generates **law enforcement-ready reports**
+```
+Scammer: "You won ₹25 lakh lottery! Pay ₹5000 to claim@paytm"
 
----
+System detects: Lottery keywords → Selects Amit Verma persona
 
-## 🌟 Key Features
+Amit: "Bro seriously? ₹25 lakh? Kaise bhai, maine toh kuch nahi kiya"
 
-### 🤖 Agentic AI System
-- **Autonomous Decision Making**: AI chooses strategies (STALL, TRUST, EXTRACT, CONFIRM) without human input
-- **4-Phase Engagement**: Trust Building → Feigned Confusion → Extraction → Evidence Collection
-- **Adaptive Responses**: Changes behavior based on scammer's tactics
+Scammer: "Lucky draw. Send fee to claim@paytm now"
 
-### 🎭 Realistic Personas
-- **Elderly Teacher** (62, retired, tech-unsure, speaks Hinglish)
-- **Young Professional** (28, software engineer, busy, impatient)
-- **College Student** (20, naive, easily pressured)
+Amit: "Processing fee? Kitna hai exactly? Parents ko pata nahi chalna chahiye..."
 
-### 🔊 Voice Mode
-- Real-time text-to-speech using Groq Orpheus
-- Different voices for each persona
-- Sequential audio playback (scammer → agent)
+Scammer: "₹5000 to claim@paytm. Also need your phone number"
 
-### 📞 Demo Call Mode
-- Simulated incoming scam calls with realistic UI
-- Auto-progression through conversation
-- Live intelligence panel showing extraction in real-time
-- Call timer, session tracking, risk indicators
+Amit: "Haan bhej sakta hoon... par pehle aapka number do verification ke liye"
 
-### 🔍 Evidence Extraction
-Automatically detects and extracts:
-- 💳 **UPI IDs** (name@paytm, name@ybl, etc.)
-- 🏦 **Bank Account Numbers** (9-18 digits)
-- 🏦 **IFSC Codes** (e.g., SBIN0001234)
-- 📞 **Phone Numbers** (Indian format)
-- 🔗 **Phishing Links** (suspicious URLs)
+Extracted Intelligence:
+✓ UPI ID: claim@paytm
+✓ Amount: ₹5000
+✓ Scam type: Lottery fraud
+✓ [Scammer reveals more info...]
+```
 
-### 📊 Intelligence Dashboard
-- Real-time risk level tracking (🟢 LOW → 🟡 MEDIUM → 🔴 HIGH)
-- Live strategy display (what AI is thinking)
-- Current engagement phase indicator
-- Evidence counter with detailed breakdown
+### Agentic Decision Flow
 
-### 📄 Evidence Reports
-- Downloadable TXT reports
-- Includes full conversation log
-- Extracted evidence summary
-- Timestamped exchanges with AI strategy notes
-- Ready for law enforcement submission
+```
+Message → Scam Detection → Persona Selection → Strategy Decision
+   ↓
+Response Generation → Intelligence Extraction → Evidence Logging
+   ↓
+Phase Progression → Callback (after 8-20 messages)
+```
 
 ---
 
-### Demo Call Mode Instructions:
-1. Click **"📞 Demo Call Mode"** tab
-2. Select a scam scenario (Banking, Lottery, or Police Threat)
-3. Click **"Accept Call"**
-4. Click **"Continue Call"** to progress through conversation
-5. Watch AI engage scammer and extract evidence in real-time
+## Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| LLM | Groq (llama-3.3-70b-versatile) |
+| TTS | Groq Orpheus |
+| API Framework | FastAPI |
+| UI | Streamlit |
+| Database | SQLite (prototype) / PostgreSQL (production) |
+| Extraction | Regex pattern matching |
+| Deployment | Render + Streamlit Cloud |
 
 ---
 
-## 🛠️ Tech Stack
-
-| Component | Technology | Why |
-|-----------|------------|-----|
-| **LLM** | Groq (llama-3.3-70b-versatile) | Fast, free, high-quality responses |
-| **TTS** | Groq Orpheus (canopylabs/orpheus-v1-english) | Natural-sounding voices with emotion control |
-| **Frontend** | Streamlit | Rapid prototyping, clean UI |
-| **Extraction** | Regex + Pattern Matching | Reliable, no external dependencies |
-| **Database** | SQLite | Lightweight, file-based, perfect for prototype |
-| **Deployment** | Streamlit Cloud | Free hosting, easy updates |
-
----
-
-## 📦 Installation (Local Development)
+## Installation
 
 ### Prerequisites
 - Python 3.10+
-- Groq API key ([Get one free](https://console.groq.com))
+- Groq API key ([get free key](https://console.groq.com))
 
 ### Setup
 
 ```bash
 # Clone repository
 git clone https://github.com/Aryan1092raj/HoneyPot.git
-cd scamhoneypot
+cd HoneyPot
 
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# OR
 .\venv\Scripts\activate   # Windows
 
 # Install dependencies
-pip install -r requirements-ui.txt    # For Streamlit UI
-pip install -r requirements-api.txt   # For API server
+pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add:
-#   GROQ_API_KEY=your_groq_key_here
-#   HONEYPOT_API_KEY=your_secure_api_key_here
+# Edit .env: Add GROQ_API_KEY=your_key_here
 
-# Run Streamlit UI
-streamlit run app.py
-
-# OR run API server
+# Run API server
 python api.py
-# API available at http://localhost:8000
-# Docs at http://localhost:8000/docs
+# API: http://localhost:8000
+# Docs: http://localhost:8000/docs
+
+# OR run Streamlit UI
+streamlit run app.py
+# UI: http://localhost:8501
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-scamhoneypot/
-├── app.py                 # Main Streamlit UI (Chat + Demo Call modes)
-├── api.py                 # FastAPI backend for hackathon submission
-├── agent.py               # Agentic AI logic (strategy decisions)
-├── personas.py            # Persona definitions with Hinglish
-├── extractor.py           # Evidence extraction patterns
-├── database.py            # SQLite conversation logging
-├── tts_handler.py         # Groq TTS integration
-├── stt_handler.py         # Groq STT integration
-├── requirements-ui.txt    # UI dependencies
-├── requirements-api.txt   # API dependencies
-├── .env.example           # Environment template
-├── API_DOCUMENTATION.md   # Complete API reference
-└── README.md              # This file
-```
-├── requirements.txt       # Python dependencies
-├── .env                   # API keys (not in repo)
-├── .gitignore             # Git exclusions
-└── README.md              # This file
+HoneyPot/
+├── api.py              # FastAPI backend
+├── app.py              # Streamlit UI
+├── personas.py         # 4 AI personas + auto-selection
+├── agent.py            # Agentic decision engine
+├── extractor.py        # Intelligence extraction
+├── database.py         # Evidence logging
+├── tts_handler.py      # Voice synthesis
+├── requirements.txt    # Dependencies
+└── README.md           # This file
 ```
 
 ---
 
-## 🎯 How the Agentic System Works
+## API Usage
 
-### Strategy Decision Process:
-```
-Scammer Message
-    ↓
-AI Analyzes:
-  - Current phase (trust_building/confusion/extraction/evidence_collection)
-  - Data extracted so far
-  - Scammer's pressure level
-    ↓
-AI Decides Strategy:
-  - STALL: Ask for repetition, pretend confusion
-  - TRUST: Build rapport, seem vulnerable
-  - EXTRACT: Push for financial details
-  - CONFIRM: Repeat back to get clearer evidence
-  - ESCALATE: Move to next phase
-    ↓
-AI Generates Response
-    ↓
-Extracts Evidence Automatically
-    ↓
-Logs Everything to Database
+### Request Format
+
+```json
+{
+  "sessionId": "unique-session-id",
+  "message": {
+    "sender": "scammer",
+    "text": "Your bank account is blocked",
+    "timestamp": 1770005528731
+  },
+  "conversationHistory": [],
+  "metadata": {
+    "channel": "SMS",
+    "language": "English",
+    "locale": "IN"
+  }
+}
 ```
 
-### Example Exchange:
+### Response Format
+
+```json
+{
+  "status": "success",
+  "reply": "Arey beta, kaun se bank se ho? Naam batao na?"
+}
 ```
-Scammer: "Your account is blocked. Share your UPI ID immediately."
-    ↓
-AI Strategy Decision: STALL (waste time)
-    ↓
-AI Response: "Beta, mujhe samajh nahi aaya. My hearing is not good. 
-              Can you repeat slowly? Which account you are saying?"
-    ↓
-Extraction: [No evidence yet]
-    ↓
-Phase: Still in "trust_building"
+
+### Callback (Automatic after 8-20 messages)
+
+When session completes, system sends:
+
+```json
+{
+  "sessionId": "session-id",
+  "scamDetected": true,
+  "totalMessagesExchanged": 15,
+  "extractedIntelligence": {
+    "upiIds": ["scam@paytm"],
+    "bankAccounts": ["123456789012"],
+    "phoneNumbers": ["+919876543210"],
+    "phishingLinks": ["http://fake-bank.com"],
+    "suspiciousKeywords": ["urgent", "blocked", "verify"]
+  },
+  "agentNotes": "Engaged lottery scammer for 15 exchanges. Extracted UPI and phone."
+}
 ```
 
 ---
 
-## 📊 Demo Scenarios
+## Demo Scenarios
 
-### 1. Banking Scam (KYC Update)
-Scammer claims incomplete KYC, threatens account block, asks for verification fee.
+### 1. Banking/KYC Scam
+**Persona:** Kamla Devi (elderly)  
+**Scammer:** "Your KYC is incomplete. Send ₹499 to kyc@paytm"  
+**Response:** "Arey! Par maine toh branch jaake kiya tha... aap kaun se bank se ho?"
 
 ### 2. Lottery Scam
-Claims user won ₹50 lakhs, needs processing fee and bank details to "verify identity."
+**Persona:** Amit Verma (student)  
+**Scammer:** "You won ₹10 lakh! Pay ₹5000 processing fee"  
+**Response:** "Bro sach mein? Par processing fee kya hai? Parents ko mat batana..."
 
-### 3. Police/Legal Threat
-Impersonates cyber crime officer, threatens arrest, demands bank details for "investigation."
+### 3. Investment Scam
+**Persona:** Rajesh Kumar (businessman)  
+**Scammer:** "Guaranteed 40% returns in mutual fund"  
+**Response:** "40%? SEBI registered hai? Company ka registration number do"
 
----
-
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-# .env file
-GROQ_API_KEY=gsk_your_api_key_here
-```
-
-### Customization
-- **Add personas**: Edit `personas.py`
-- **Add scenarios**: Edit `DEMO_SCENARIOS` in `app.py`
-- **Modify extraction**: Edit patterns in `extractor.py`
-- **Change voices**: Edit `persona_voices` in `tts_handler.py`
+### 4. Credit Card Scam
+**Persona:** Priya Sharma (professional)  
+**Scammer:** "Your card eligible for premium upgrade"  
+**Response:** "Which card? Send email from official domain. I'll verify"
 
 ---
 
-## 🚦 Usage
+## Intelligence Extraction
 
-### Chat Mode (Manual Testing)
-1. Toggle "Demo Mode" ON
-2. Select scenario
-3. Click "Send Next Demo Message" to progress
-4. Watch AI respond with strategy + phase indicators
+Automatically extracts:
 
-### Demo Call Mode (Simulated Calls)
-1. Switch to "Demo Call Mode" tab
-2. See incoming call from random scenario
-3. Accept call
-4. Click "Continue Call" to auto-progress
-5. View live extraction on right panel
-6. Download evidence report when complete
+| Type | Pattern | Example |
+|------|---------|---------|
+| UPI IDs | name@bank | scammer@paytm |
+| Bank Accounts | 10-18 digits | 123456789012 |
+| IFSC Codes | BANK0001234 | SBIN0012345 |
+| Phone Numbers | Indian format | +919876543210 |
+| Phishing Links | URLs | fake-verify.com |
+| Keywords | Scam indicators | urgent, blocked, OTP |
 
 ---
 
-## 📈 Impact & Scalability
+## Roadmap
 
-### Current (Prototype):
-- ✅ Proves agentic AI can engage scammers convincingly
-- ✅ Demonstrates evidence extraction works
-- ✅ Shows phase-based engagement strategy
-- ✅ Validates persona-based responses
+### Current (Prototype)
+✅ 4 specialized personas  
+✅ Auto persona selection  
+✅ Multi-phase engagement  
+✅ Intelligence extraction  
+✅ Evidence reports  
+✅ API + UI deployment  
 
-### Phase 2 (Production):
-- 🔄 Integrate with Twilio for real phone calls
-- 🔄 Add AssemblyAI for real-time speech-to-text
-- 🔄 Connect to telecom providers for call routing
-- 🔄 Law enforcement API integration
-- 🔄 Scale to handle 1000+ concurrent calls
+### Phase 2 (Production)
+- Real phone call integration (Twilio)
+- Speech-to-text (AssemblyAI)
+- PostgreSQL database
+- Advanced analytics dashboard
+- Multi-language support
 
-### Vision:
-- 🎯 Waste scammer time = fewer victims
-- 🎯 Build national scammer database
-- 🎯 Provide evidence for police prosecutions
-- 🎯 Make scamming India too expensive/risky
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- More persona variations
-- Better extraction patterns
-- Additional scam scenarios
-- UI/UX enhancements
-- Performance optimizations
+### Phase 3 (National Scale)
+- 10+ regional personas
+- Telecom provider partnerships
+- Law enforcement API integration
+- National scam intelligence database
+- Real-time pattern detection
 
 ---
 
-## 📄 License
+## Contributing
 
-MIT License - see LICENSE file for details
+We welcome contributions:
 
----
+**Add personas:** Create new persona profiles in `personas.py`  
+**Improve extraction:** Add patterns to `extractor.py`  
+**New scam scenarios:** Update demo scenarios in `app.py`  
+**UI enhancements:** Improve Streamlit interface  
 
-## 🏆 Acknowledgments
-
-- **India AI Impact Buildathon** for the challenge
-- **Groq** for fast, free LLM + TTS APIs
-- **Streamlit** for the amazing framework
-
----
-
-## 📞 Contact
-
-**Demo:** https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/
-
-**Built with ❤️ for India** 🇮🇳
+Submit pull requests to: https://github.com/Aryan1092raj/HoneyPot
 
 ---
 
-**⚠️ Disclaimer:** This is a prototype for educational and research purposes. Real-world deployment requires legal consultation, telecom partnerships, and regulatory compliance.
+## License
+
+MIT License - see [LICENSE](LICENSE) file
+
+---
+
+## Acknowledgments
+
+- India AI Impact Buildathon 2026
+- Groq for LLM and TTS APIs
+- Streamlit for UI framework
+
+---
+
+## Contact & Links
+
+**Live Demo:** https://honeypot-2g5hze8qvib9a3h6fjmxqj.streamlit.app/  
+**API Docs:** https://scambait-api.onrender.com/docs  
+**GitHub:** https://github.com/Aryan1092raj/HoneyPot  
+
+Built with ❤️ for India 🇮🇳
+
+---
+
+*Disclaimer: This is a research prototype. Production deployment requires legal consultation, telecom partnerships, and regulatory compliance.*

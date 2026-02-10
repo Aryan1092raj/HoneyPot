@@ -142,10 +142,17 @@ MAX_MESSAGES = 20  # Hard cap on exchanges
 
 # Scam detection keywords
 SCAM_KEYWORDS = (
+    # Banking/Finance
     "urgent", "blocked", "suspended", "verify", "otp", "kyc", "pan",
     "aadhaar", "account", "bank", "upi", "transfer", "payment",
     "immediately", "click", "link", "update", "expire", "freeze",
-    "lottery", "prize", "winner", "refund", "police", "arrest"
+    # Lottery/Prize (EXPANDED)
+    "lottery", "prize", "winner", "won", "congratulations", "claim",
+    "lakh", "crore", "rupees", "jackpot", "lucky", "draw",
+    # Threats
+    "police", "arrest", "court", "legal", "case", "crime", "fraud",
+    # Others
+    "refund", "cashback", "reward", "bonus", "offer", "limited"
 )
 
 # LLM forbidden patterns (to detect leaked reasoning)
@@ -255,35 +262,48 @@ def detect_scam(text: str) -> bool:
     Detect scam intent using multiple signals.
     Requires at least 2 independent signals to confirm scam.
     
-    Signals:
-    - Multiple scam keywords (2+)
-    - UPI ID pattern
-    - Phone number pattern
-    - URL pattern
+    Special handling for lottery scams (instant detection).
     """
     hits = 0
-    text_lower = text.casefold()  # More performant than lower()
+    text_lower = text.casefold()
+    
+    # SPECIAL CASE: Lottery scams (very common, easy to detect)
+    lottery_indicators = ["lottery", "prize", "won", "winner", "congratulations", "claim", "jackpot"]
+    amount_indicators = ["lakh", "crore", "₹", "rupees", "rs"]
+    
+    has_lottery = any(ind in text_lower for ind in lottery_indicators)
+    has_amount = any(amt in text_lower for amt in amount_indicators)
+    
+    if has_lottery and has_amount:
+        logger.info("Lottery scam detected (lottery keyword + amount)")
+        return True  # Instant detection
     
     # Signal 1: Multiple keyword hits
     keyword_hits = sum(1 for kw in SCAM_KEYWORDS if kw in text_lower)
     if keyword_hits >= 2:
         hits += 1
+        logger.debug(f"Keyword signal: {keyword_hits} keywords found")
     
     # Signal 2: UPI pattern
     if COMPILED_PATTERNS["upi"].search(text):
         hits += 1
+        logger.debug("UPI signal detected")
     
     # Signal 3: Phone pattern
     if COMPILED_PATTERNS["phone"].search(text):
         hits += 1
+        logger.debug("Phone signal detected")
     
     # Signal 4: URL pattern
     if COMPILED_PATTERNS["url"].search(text):
         hits += 1
+        logger.debug("URL signal detected")
     
     is_scam = hits >= 2
     if is_scam:
-        logger.info(f"Scam detected with {hits} signals")
+        logger.info(f"Scam detected with {hits} signals (threshold: 2)")
+    else:
+        logger.debug(f"Not enough signals ({hits}/2) - treating as non-scam")
     
     return is_scam
 

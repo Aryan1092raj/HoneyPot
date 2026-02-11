@@ -230,27 +230,19 @@ def get_session(session_id: str) -> dict:
     """
     Get or create session for given session ID.
     
-    Session structure:
-    {
-        "messages_exchanged": int,
-        "scam_detected": bool,
-        "extracted_intelligence": {
-            "bankAccounts": [],
-            "upiIds": [],
-            "phishingLinks": [],
-            "phoneNumbers": [],
-            "suspiciousKeywords": []
-        },
-        "callback_sent": bool,
-        "last_activity": float,
-        "conversation": []
-    }
+    Session structure includes a proper state machine with phases:
+    - trust_building: Initial confusion, ask who they are (messages 1-3)
+    - probing: Show interest, ask for details (messages 4-8)
+    - extraction: Almost comply, extract UPI/phone/details (messages 9-15)
+    - winding_down: Show doubt, stall, mention checking with family (messages 16-20)
+    - terminated: Session ended
     """
     if session_id not in sessions:
         logger.info(f"Creating new session: {session_id}")
         sessions[session_id] = {
             "messages_exchanged": 0,
             "scam_detected": False,
+            "state": "trust_building",  # State machine phase
             "persona_name": None,
             "persona_prompt": None,
             "extracted_intelligence": {
@@ -266,6 +258,83 @@ def get_session(session_id: str) -> dict:
         }
     sessions[session_id]["last_activity"] = time.time()
     return sessions[session_id]
+
+
+# ============================================================
+# STATE MACHINE (Layer 2: Agent Controller)
+# ============================================================
+
+def transition_state(session: dict) -> None:
+    """
+    Deterministic state machine transitions.
+    BACKEND LOGIC — not LLM decision-making.
+    """
+    msg_count = session["messages_exchanged"]
+    
+    if msg_count <= 3:
+        session["state"] = "trust_building"
+    elif msg_count <= 8:
+        session["state"] = "probing"
+    elif msg_count <= 15:
+        session["state"] = "extraction"
+    else:
+        session["state"] = "winding_down"
+    
+    logger.debug(f"State transition → {session['state']} (message {msg_count})")
+
+
+def should_continue(session: dict) -> bool:
+    """
+    BACKEND LOGIC: Decide if engagement should continue.
+    Deterministic — NOT an LLM decision.
+    
+    Termination conditions:
+    1. Callback already sent
+    2. Hard cap at MAX_MESSAGES (20)
+    3. Minimum engagement (8) + sufficient intel (3+ items)
+    """
+    if session["callback_sent"]:
+        return False
+    
+    if session["messages_exchanged"] >= MAX_MESSAGES:
+        return False
+    
+    # Minimum engagement + sufficient intelligence extracted
+    if session["messages_exchanged"] >= MIN_MESSAGES:
+        intel = session["extracted_intelligence"]
+        intel_count = sum(len(v) for v in intel.values())
+        if intel_count >= 3:
+            return False
+    
+    return True
+
+
+def get_phase_instruction(session: dict) -> str:
+    """
+    Return phase-specific instruction for the LLM based on current state.
+    The LLM generates responses; the state machine controls behavior.
+    """
+    phase_instructions = {
+        "trust_building": (
+            "You just received this call. Be CONFUSED and SUSPICIOUS. "
+            "Ask who they are. Ask for their name and branch."
+        ),
+        "probing": (
+            "You are starting to believe them but still CONFUSED about tech terms. "
+            "Stall for time. Look for your glasses. Search for pen. Ask them to repeat slowly."
+        ),
+        "extraction": (
+            "You are almost ready to comply. ALMOST do what they ask but pause with doubt. "
+            "Ask for their UPI ID or number so you can 'send' or 'verify'. "
+            "Ask innocent questions that make them reveal information."
+        ),
+        "winding_down": (
+            "You are getting doubtful again. Ask for their employee ID. "
+            "Say your neighbor warned about fraud. Ask for branch number to verify. "
+            "Keep them talking but show skepticism."
+        ),
+    }
+    return phase_instructions.get(session["state"], "Respond naturally.")
 
 # ============================================================
 # SCAM DETECTION
@@ -439,16 +508,8 @@ def get_llm_response(session: dict, scammer_message: str) -> str:
         # Build minimal context (last 4 messages only)
         history = session["conversation"][-4:]
         
-        # Determine conversation phase for adaptive prompting
-        msg_count = session["messages_exchanged"]
-        if msg_count <= 3:
-            phase_instruction = "You just received this call. Be CONFUSED and SUSPICIOUS. Ask who they are. Ask for their name and branch."
-        elif msg_count <= 7:
-            phase_instruction = "You are starting to believe them but still CONFUSED about tech terms. Stall for time. Look for your glasses. Search for pen. Ask them to repeat slowly."
-        elif msg_count <= 12:
-            phase_instruction = "You are almost ready to comply. ALMOST do what they ask but pause with doubt. Ask for their UPI ID or number so you can 'send' or 'verify'. Ask innocent questions that make them reveal information."
-        else:
-            phase_instruction = "You are getting doubtful again. Ask for their employee ID. Say your neighbor warned about fraud. Ask for branch number to verify. Keep them talking."
+        # Get phase instruction from state machine (Layer 2 controls behavior)
+        phase_instruction = get_phase_instruction(session)
 
         messages = [
             {
@@ -532,6 +593,7 @@ async def send_callback(session_id: str, session: dict) -> None:
         "totalMessagesExchanged": session["messages_exchanged"],
         "extractedIntelligence": session["extracted_intelligence"],
         "agentNotes": f"AI agent engaged suspected scammer for {session['messages_exchanged']} message exchanges. "
+                      f"Final state: {session.get('state', 'unknown')}. "
                       f"Extracted {evidence_count} financial identifiers (UPI IDs: {len(intel['upiIds'])}, "
                       f"phone numbers: {len(intel['phoneNumbers'])}, bank accounts: {len(intel['bankAccounts'])}, "
                       f"URLs: {len(intel['phishingLinks'])})."
@@ -577,9 +639,9 @@ async def honeypot(request: HoneypotRequest, background_tasks: BackgroundTasks) 
     session_id = request.sessionId
     session = get_session(session_id)
     
-    # If callback already sent, return closing response
-    if session["callback_sent"]:
-        logger.info(f"Session {session_id} already completed")
+    # If session terminated or callback already sent, return closing response
+    if session["callback_sent"] or session.get("state") == "terminated":
+        logger.info(f"Session {session_id} already completed (state={session.get('state')})")
         return HoneypotResponse(
             status="success",
             reply="Thank you for calling. Goodbye."
@@ -634,31 +696,24 @@ async def honeypot(request: HoneypotRequest, background_tasks: BackgroundTasks) 
         else:
             reply = "Hello. How can I help you today?"
     
-    # STEP 4: Update session
+    # STEP 4: Update session + state machine transition
     session["messages_exchanged"] += 1
+    transition_state(session)  # Deterministic state transition (Layer 2)
     session["conversation"].append({
         "scammer": message,
         "agent": reply,
         "timestamp": datetime.now().isoformat()
     })
     
-    # STEP 5: Check if should end session
-    intel = session["extracted_intelligence"]
-    has_enough_intel = (
-        len(intel["upiIds"]) >= 1 or
-        len(intel["phoneNumbers"]) >= 1 or
-        len(intel["bankAccounts"]) >= 1 or
-        len(intel["phishingLinks"]) >= 1
-    )
+    logger.info(f"Session {session_id} - State: {session['state']} | Messages: {session['messages_exchanged']}")
     
-    should_end = (
-        session["messages_exchanged"] >= MAX_MESSAGES or
-        (session["messages_exchanged"] >= MIN_MESSAGES and has_enough_intel)
-    )
+    # STEP 5: Check if should end session (backend logic, NOT LLM decision)
+    should_end = not should_continue(session)
     
     # STEP 6: Send callback if ending and scam detected
     if should_end and session["scam_detected"] and not session["callback_sent"]:
-        logger.info(f"Session {session_id} ending - triggering callback")
+        session["state"] = "terminated"
+        logger.info(f"Session {session_id} ending - state=terminated, triggering callback")
         background_tasks.add_task(send_callback, session_id, session)
     
     return HoneypotResponse(status="success", reply=reply)

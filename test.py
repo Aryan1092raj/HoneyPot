@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 # Your API configuration
-ENDPOINT_URL = "https://scambait-api.onrender.com/api/honeypot"
+ENDPOINT_URL = "http://localhost:8000/api/honeypot"
 API_KEY = "scambait-secure-key-2026-hackathon"  # Optional
 
 # Test scenario

@@ -337,33 +337,24 @@ FORBIDDEN_PATTERNS = (
     "we need your", "please provide your", "share your"
 )
 
-# Fallback responses - persona-neutral, no hardcoded names/details
-# These rotate based on message count to simulate realistic conversation flow
+# Fallback responses - EVERY response asks for intelligence (phone/UPI/link/email/account)
+# These rotate based on message count and actively probe for identifiable information
 NAIVE_RESPONSES = (
-    # Phase 1: Initial confusion & trust-building (messages 0-4)
-    "Haan ji? Kaun bol raha hai? Mera account ka kya hua... mujhe toh koi message nahi aaya?",
-    "Arey arey... blocked matlab? Aap pakka bank se ho?",
-    "Acha acha... par aapka naam kya hai? Likhna padega na mujhe... pen dhundhti hoon ruko...",
-    "Haan haan samajh rahi hoon... woh KYC KYC kya hota hai exactly?",
-    "Kaun se branch se bol rahe ho? Manager ka naam kya hai wahan?",
-    # Phase 2: Controlled confusion & stalling (messages 5-9)
-    "Ek minute... chasma lagati hoon... phone pe chhota likha hai sab... haan bolo?",
-    "PhonePe? Haan hai mere paas... par usme kya karna hai exactly?",
-    "OTP aata hai na green color wala message mein? Ruko ruko check karti hoon...",
-    "Matlab main woh app wala open karoon? Haan kar rahi hoon... thoda slow hai phone...",
-    "Woh link wala message bheja aapne? Ruko dekhti hoon... yeh theek hai na?",
-    # Phase 3: Almost-compliance & extraction (messages 10-14)
-    "Haan haan main bhejti hoon... par kahan bhejoon? Woh UPI ID phir se bolo na slowly...",
-    "Pension aata hai mahine ka... uska kuch nahi hoga na? FD mein bhi hai thoda...",
-    "Account number chahiye aapko? Woh passbook mein likha hai na... ruko lati hoon...",
-    "Arey itni jaldi kyun? Kal nahi ho sakta?",
-    "Theek hai theek hai... aap woh number phir se bolo na? Likhti hoon...",
-    # Phase 4: Doubt & re-engagement (messages 15-19)
-    "Ek baat batao... agar aap bank se ho toh mera account number toh aapke paas hoga na?",
-    "Padosan bol rahi thi ki aajkal bahut fraud hota hai... aap toh real ho na?",
-    "Haan haan kar rahi hoon... bas ek minute... battery kam hai phone ki...",
-    "Acha aap branch ka number do main khud call karke confirm karti hoon...",
-    "Main complaint likhi hai... aapka ID number kya tha? Naam phir se bolo na?"
+    # Phase 1: Initial confusion + ask for PHONE NUMBER (messages 0-1)
+    "Haan ji? Kaun bol raha hai? Aapka phone number kya hai... main call back karungi verify karne ke liye?",
+    "Arey arey... blocked matlab? Aap pakka bank se ho? Aapka direct number do na, main khud call karungi.",
+    # Phase 2: Ask for UPI ID and ACCOUNT NUMBER (messages 2-3)
+    "Acha acha... par kahan bhejoon paisa? Woh UPI ID phir se bolo na slowly... likhti hoon...",
+    "Account number chahiye aapko? Woh passbook mein likha hai... par aapka account number kya hai? Main transfer kar doongi.",
+    # Phase 3: Ask for LINK and EMAIL (messages 4-5)
+    "Woh link wala message bhejo na phir se... phone pe chhota likha hai, dikha nahi raha...",
+    "Email pe bhej do details beta... mera beta padhega. Aapka email ID kya hai?",
+    # Phase 4: Second round of intelligence gathering (messages 6-7)
+    "Haan haan main bhejti hoon... par UPI ID kya tha aapka? Woh @ wala phir se bolo na?",
+    "Aap branch ka phone number do na... main khud call karke confirm karti hoon. Landline number hoga na?",
+    # Phase 5: Deeper probing (messages 8-9)
+    "Theek hai theek hai... aapka website kya hai? Link bhejo na WhatsApp pe, main check karti hoon.",
+    "Padosan bol rahi thi fraud hota hai aajkal... aapka official email bhejo, mera beta verify karega."
 )
 
 # ============================================================
@@ -431,11 +422,11 @@ def transition_state(session: dict) -> None:
     """
     msg_count = session["messages_exchanged"]
     
-    if msg_count <= 3:
+    if msg_count <= 2:
         session["state"] = "trust_building"
-    elif msg_count <= 8:
+    elif msg_count <= 5:
         session["state"] = "probing"
-    elif msg_count <= 15:
+    elif msg_count <= 8:
         session["state"] = "extraction"
     else:
         session["state"] = "winding_down"
@@ -476,21 +467,31 @@ def get_phase_instruction(session: dict) -> str:
     """
     phase_instructions = {
         "trust_building": (
-            "You just received this call. Be CONFUSED and SUSPICIOUS. "
-            "Ask who they are. Ask for their name and branch."
+            "You just received this call/message. Be CONFUSED and WORRIED. "
+            "Ask: WHO are you? What is your NAME? Which BRANCH/OFFICE? Give me your PHONE NUMBER so I can call back. "
+            "Show concern about your account but demand they prove their identity first."
         ),
         "probing": (
-            "You are starting to believe them but still CONFUSED about tech terms. "
-            "Stall for time. Look for your glasses. Search for pen. Ask them to repeat slowly."
+            "You are starting to believe them but still confused. "
+            "Ask them to REPEAT their phone number slowly. Ask: which WEBSITE can I check? "
+            "Ask: send me an EMAIL with the details. What is the LINK to verify? "
+            "Ask for their UPI ID so you can 'verify' it on your banking app. "
+            "Stall by looking for glasses/pen but KEEP ASKING for their contact details."
         ),
         "extraction": (
-            "You are almost ready to comply. ALMOST do what they ask but pause with doubt. "
-            "Ask for their UPI ID or number so you can 'send' or 'verify'. "
-            "Ask innocent questions that make them reveal information."
+            "You are ready to comply but need their details first. "
+            "Say: 'I want to send/verify but what is your UPI ID?' "
+            "Say: 'Tell me the ACCOUNT NUMBER to transfer to.' "
+            "Say: 'Give me the LINK again, phone pe chhota likha hai.' "
+            "Say: 'What is your EMAIL, I will send the documents.' "
+            "Say: 'Your PHONE NUMBER again please, I will call to confirm.' "
+            "Almost comply with everything but keep asking for ONE MORE detail."
         ),
         "winding_down": (
-            "You are getting doubtful again. Ask for their employee ID. "
-            "Say your neighbor warned about fraud. Ask for branch number to verify. "
+            "You are getting doubtful. Ask for their employee ID and branch PHONE NUMBER. "
+            "Say your neighbor/son warned about fraud — ask them to send proof via EMAIL or LINK. "
+            "Ask: 'Which WEBSITE is this? Give me the URL.' "
+            "Ask for their UPI ID one more time to 'verify on Google Pay'. "
             "Keep them talking but show skepticism."
         ),
     }
@@ -700,8 +701,8 @@ def get_llm_response(session: dict, scammer_message: str) -> str:
             persona_name = session["persona_name"]
             persona_prompt = session["persona_prompt"]
         
-        # Build minimal context (last 4 messages only)
-        history = session["conversation"][-4:]
+        # Build context (last 6 messages for better continuity)
+        history = session["conversation"][-6:]
         
         # Get phase instruction from state machine (Layer 2 controls behavior)
         phase_instruction = get_phase_instruction(session)
@@ -714,12 +715,13 @@ def get_llm_response(session: dict, scammer_message: str) -> str:
 CURRENT PHASE: {phase_instruction}
 
 RULES:
-- 1-2 sentences ONLY. Short, messy, natural.
+- 2-3 sentences. Short, messy, natural.
 - NEVER give real OTP/PIN/password
 - NEVER break character
 - NEVER say "I will" or "Let me" (English-style)
 - NEVER write explanations or reasoning
-- Ask innocent questions that make them reveal details (UPI ID, number, link)
+- ALWAYS end with a question asking for ONE of: their phone number, UPI ID, email address, website link, or bank account number
+- Examples of good questions: "Aapka number kya hai?", "UPI ID bolo na?", "Link bhejo na?", "Email pe bhej do details", "Account number kya hai aapka?"
 - Mention your financial details vaguely to keep them interested"""
             }
         ]
@@ -735,7 +737,7 @@ RULES:
         response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
-            max_tokens=80,
+            max_tokens=150,
             temperature=0.8
         )
         
@@ -749,7 +751,7 @@ RULES:
                 return get_agent_response(session, scammer_message)
         
         # Block overly long replies (likely reasoning leakage)
-        if len(reply) > 200:
+        if len(reply) > 400:
             logger.warning(f"Blocked overly long LLM output ({len(reply)} chars)")
             return get_agent_response(session, scammer_message)
         
@@ -885,23 +887,29 @@ async def honeypot(
     # Extract message text
     message = _extract_message_text(request.message)
     
-    # Seed session conversation from PS conversationHistory (first message only)
-    if session["messages_exchanged"] == 0 and request.conversationHistory:
+    # ALWAYS extract intelligence from conversation history (evaluator sends full history each turn)
+    if request.conversationHistory:
         for hist_msg in request.conversationHistory:
             if isinstance(hist_msg, dict):
                 sender = hist_msg.get("sender", "scammer")
                 text = hist_msg.get("text", "")
-                if sender == "scammer":
-                    session["conversation"].append({"scammer": text, "agent": "", "timestamp": datetime.now().isoformat()})
-                    # Also extract intel from history messages
+                if text:
+                    # Extract intel from ALL history messages (idempotent — deduped in extract_intelligence)
                     extract_intelligence(text, session)
                     if not session["scam_detected"]:
                         session["scam_detected"] = detect_scam(text)
-                elif sender == "user":
-                    # Attach agent reply to last scammer entry
-                    if session["conversation"]:
-                        session["conversation"][-1]["agent"] = text
-                    session["messages_exchanged"] += 1
+        # Only seed conversation structure on first call
+        if session["messages_exchanged"] == 0:
+            for hist_msg in request.conversationHistory:
+                if isinstance(hist_msg, dict):
+                    sender = hist_msg.get("sender", "scammer")
+                    text = hist_msg.get("text", "")
+                    if sender == "scammer":
+                        session["conversation"].append({"scammer": text, "agent": "", "timestamp": datetime.now().isoformat()})
+                    elif sender == "user":
+                        if session["conversation"]:
+                            session["conversation"][-1]["agent"] = text
+                        session["messages_exchanged"] += 1
     
     # No message? Return default
     if not message:

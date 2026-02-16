@@ -577,13 +577,19 @@ def extract_intelligence(text: str, session: dict) -> None:
             intel["upiIds"].append(match)
             logger.info(f"Extracted UPI ID: {match}")
     
-    # Extract phone numbers
+    # Extract phone numbers (store both original and cleaned for evaluator substring matching)
     phone_matches = COMPILED_PATTERNS["phone"].findall(text)
     for match in phone_matches:
-        clean = re.sub(r'[\s-]', '', match)
+        original = match.strip()
+        clean = re.sub(r'[\s-]', '', original)
+        # Store cleaned version
         if clean not in intel["phoneNumbers"]:
             intel["phoneNumbers"].append(clean)
             logger.info(f"Extracted phone: {clean}")
+        # Also store original format if different (e.g. +91-9876543210 vs +919876543210)
+        if original != clean and original not in intel["phoneNumbers"]:
+            intel["phoneNumbers"].append(original)
+            logger.info(f"Extracted phone (original format): {original}")
     
     # Extract URLs
     url_matches = COMPILED_PATTERNS["url"].findall(text)

@@ -173,7 +173,7 @@ def init_groq() -> None:
 
         api_key = os.getenv("GROQ_API_KEY")
         if api_key:
-            groq_client = Groq(api_key=api_key)
+            groq_client = Groq(api_key=api_key, timeout=15.0)
             logger.info("Groq LLM initialised successfully")
         else:
             logger.warning("GROQ_API_KEY not found — using fallback responses")
@@ -262,8 +262,8 @@ def get_llm_response(session: dict, scammer_message: str) -> str:
         response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
-            max_tokens=150,
-            temperature=0.8,
+            max_tokens=200,
+            temperature=0.85,
         )
 
         reply = response.choices[0].message.content.strip()

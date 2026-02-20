@@ -22,9 +22,9 @@ class MessageField(BaseModel):
     sender: Optional[str] = Field(
         default="scammer", description="Message sender (scammer / user)"
     )
-    timestamp: Optional[Union[int, str]] = Field(
+    timestamp: Optional[Union[float, int, str]] = Field(
         default=None,
-        description="Epoch ms or ISO-8601 timestamp",
+        description="Epoch ms (int/float) or ISO-8601 timestamp (str)",
     )
 
 
@@ -57,13 +57,14 @@ class HoneypotResponse(BaseModel):
     """Outgoing response from the honeypot endpoint."""
 
     status: str = Field(default="success", description="Always 'success'")
+    sessionId: Optional[str] = Field(default=None, description="Session identifier")
     reply: str = Field(..., description="AI persona reply")
     persona: Optional[str] = Field(default=None, description="Active persona name")
     scamDetected: Optional[bool] = Field(default=None, description="Scam detected?")
-    messagesExchanged: Optional[int] = Field(default=None, description="Turn count")
+    totalMessagesExchanged: Optional[int] = Field(default=None, description="Total turn count")
     callbackSent: Optional[str] = Field(default=None, description="Callback status")
     extractedIntelligence: Optional[Dict] = Field(
-        default=None, description="Extracted evidence (UPI, phone, URL, email, bank)"
+        default=None, description="Extracted evidence (phones, accounts, UPIs, links, emails)"
     )
     redFlagsIdentified: Optional[List[str]] = Field(
         default=None,

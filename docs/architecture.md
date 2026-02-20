@@ -170,6 +170,7 @@ POST /api/honeypot
 ```
 scamhoneypot/
 ├── api.py                    # Entry point (thin wrapper → src/main.py)
+├── render.yaml               # Render deployment configuration
 ├── src/
 │   ├── __init__.py           # Package metadata
 │   ├── main.py               # FastAPI app, endpoints, error handlers

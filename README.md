@@ -96,7 +96,7 @@ venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS/Linux
 
 # Dependencies
-pip install -r requirements-api.txt
+pip install -r requirements.txt
 
 # Environment variables
 cp .env.example .env
@@ -203,6 +203,7 @@ Server health check with Groq LLM status and active session count.
 ```
 ├── README.md                  # This file
 ├── api.py                     # Entry point (thin wrapper → src/)
+├── render.yaml                # Render deployment configuration
 ├── src/
 │   ├── __init__.py            # Package metadata
 │   ├── main.py                # FastAPI app, endpoints, error handlers

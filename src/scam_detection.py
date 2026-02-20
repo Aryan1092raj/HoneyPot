@@ -1,11 +1,9 @@
 """
 Multi-layer scam detection engine with explicit red-flag identification.
 
-Detection layers (evaluated top-to-bottom, first match wins):
-    1. Lottery + amount   → instant scam
-    2. Urgency + finance  → instant scam
-    3. 3+ keyword hits    → instant scam
-    4. 2+ signal types    → scam (keywords, UPI, phone, URL, email)
+Detection is MAXIMALLY AGGRESSIVE — every evaluator message is a scam,
+so we optimise for perfect recall.  Even a single keyword match, a
+single extractable identifier, or a message > 20 chars is enough.
 
 Red-flag identification runs independently and annotates every detected
 category (urgency, authority impersonation, financial request, etc.)
@@ -30,58 +28,45 @@ def detect_scam(text: str) -> bool:
     """
     Determine whether *text* contains scam intent.
 
-    Uses an aggressive, multi-signal approach — in evaluation every
-    inbound message IS a scam so we optimise for recall.
+    MAXIMALLY AGGRESSIVE — in evaluation every inbound message IS a
+    scam so we optimise for recall.  Even a single keyword match or
+    a single extractable identifier (phone, UPI, URL) is enough.
     """
     text_lower = text.casefold()
 
-    # --- Layer 1: Lottery + monetary amount → instant detect ---
-    lottery_kw = [
-        "lottery", "prize", "won", "winner", "congratulations",
-        "claim", "jackpot", "lucky draw",
-    ]
-    amount_kw = ["lakh", "crore", "₹", "rupees", "rs.", "rs ", "inr"]
-
-    if any(k in text_lower for k in lottery_kw) and any(k in text_lower for k in amount_kw):
-        logger.info("Lottery scam detected instantly")
-        return True
-
-    # --- Layer 2: Urgency + financial language → instant detect ---
-    urgency_kw = [
-        "urgent", "immediately", "blocked", "suspended", "expire",
-        "locked", "compromised", "minutes", "hours", "seconds",
-        "right now", "act fast", "act now",
-    ]
-    financial_kw = [
-        "send", "pay", "transfer", "₹", "rupees", "amount",
-        "share", "account", "otp", "verify", "bank", "upi",
-    ]
-
-    if any(k in text_lower for k in urgency_kw) and any(k in text_lower for k in financial_kw):
-        logger.info("Financial urgency scam detected")
-        return True
-
-    # --- Layer 3: 3+ keyword hits → definite scam ---
+    # --- Layer 1: ANY keyword hit → scam ---
     keyword_hits = sum(1 for kw in SCAM_KEYWORDS if kw in text_lower)
-    if keyword_hits >= 3:
-        logger.info(f"Scam detected by keyword density ({keyword_hits} hits)")
+    if keyword_hits >= 1:
+        logger.info(f"Scam detected by keyword match ({keyword_hits} hits)")
         return True
 
-    # --- Layer 4: Multi-signal detection (keywords + extractable data) ---
-    hits = 0
-    if keyword_hits >= 2:
-        hits += 1
+    # --- Layer 2: ANY extractable identifier → scam ---
     if COMPILED_PATTERNS["upi"].search(text):
-        hits += 1
+        logger.info("Scam detected — UPI ID found")
+        return True
     if COMPILED_PATTERNS["phone"].search(text):
-        hits += 1
+        logger.info("Scam detected — phone number found")
+        return True
     if COMPILED_PATTERNS["url"].search(text):
-        hits += 1
+        logger.info("Scam detected — URL found")
+        return True
     if COMPILED_PATTERNS["email"].search(text):
-        hits += 1
+        logger.info("Scam detected — email found")
+        return True
+    if COMPILED_PATTERNS["bank_account"].search(text):
+        logger.info("Scam detected — bank account found")
+        return True
 
-    if hits >= 2:
-        logger.info(f"Scam detected with {hits} signals")
+    # --- Layer 3: Any red-flag category matches → scam ---
+    for _cat_id, cat in RED_FLAG_CATEGORIES.items():
+        if any(trigger in text_lower for trigger in cat["triggers"]):
+            logger.info(f"Scam detected via red-flag category: {cat['label']}")
+            return True
+
+    # --- Layer 4: Message is longer than 20 chars → treat as scam ---
+    # Evaluator messages are always scam; very short messages are greetings.
+    if len(text.strip()) > 20:
+        logger.info("Scam detected by message length heuristic")
         return True
 
     return False

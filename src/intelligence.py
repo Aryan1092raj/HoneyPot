@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 
-from src.config import COMPILED_PATTERNS, SCAM_KEYWORDS, logger
+from src.config import COMPILED_PATTERNS, KNOWN_UPI_HANDLES, SCAM_KEYWORDS, logger
 
 
 def extract_intelligence_from_history(conversation_history: list, session: dict) -> None:
@@ -55,16 +55,47 @@ def extract_intelligence(text: str, session: dict) -> None:
             logger.info(f"Extracted email: {match}")
 
     # 2. UPI IDs ---------------------------------------------------------
+    # Build set of all email matches in text for cross-referencing
+    all_email_matches = set(COMPILED_PATTERNS["email"].findall(text))
+    all_emails_lower = {e.lower() for e in (all_email_matches | set(intel["emailAddresses"]))}
+
     for match in COMPILED_PATTERNS["upi"].findall(text):
-        is_email = any(match in email for email in intel["emailAddresses"])
-        if match not in intel["upiIds"] and not is_email:
+        match_lower = match.lower()
+        domain_part = match_lower.split("@", 1)[-1] if "@" in match_lower else ""
+
+        # Case-insensitive dedup
+        existing_lower = {u.lower() for u in intel["upiIds"]}
+        if match_lower in existing_lower:
+            continue
+
+        # ALWAYS check: skip if this match is a prefix/fragment of a full email
+        # e.g. "support@sbi" is a fragment of "support@sbi-fraud-dept.fake.com"
+        is_email_fragment = any(
+            (match_lower in email and match_lower != email)
+            or email.startswith(match_lower)
+            for email in all_emails_lower
+        )
+        if is_email_fragment:
+            logger.debug(f"Skipped UPI candidate '{match}' — fragment of email")
+            continue
+
+        # Positive match: domain is a known UPI handle → definitely UPI
+        is_known_upi = domain_part in KNOWN_UPI_HANDLES
+        if is_known_upi:
+            intel["upiIds"].append(match)
+            logger.info(f"Extracted UPI ID (known handle): {match}")
+            continue
+
+        # Skip if it looks like a full email (has a dot-separated TLD after @)
+        has_tld = bool(re.match(r"[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", domain_part))
+        if not has_tld:
             intel["upiIds"].append(match)
             logger.info(f"Extracted UPI ID: {match}")
 
     # 3. Phone numbers ---------------------------------------------------
     for match in COMPILED_PATTERNS["phone"].findall(text):
         original = match.strip()
-        clean = re.sub(r"[\s-]", "", original)
+        clean = re.sub(r"[\s.\-]", "", original)
         if clean not in intel["phoneNumbers"]:
             intel["phoneNumbers"].append(clean)
             logger.info(f"Extracted phone: {clean}")
@@ -91,7 +122,24 @@ def extract_intelligence(text: str, session: dict) -> None:
             intel["bankAccounts"].append(match)
             logger.info(f"Extracted bank account: {match}")
 
-    # 6. Suspicious keywords ---------------------------------------------
+    # 5b. Spaced bank accounts (e.g., "1234 5678 9012 34") ---------------
+    if "bank_account_spaced" in COMPILED_PATTERNS:
+        for match in COMPILED_PATTERNS["bank_account_spaced"].findall(text):
+            clean = re.sub(r"[\s.\-]", "", match)
+            if clean not in intel["bankAccounts"] and clean not in phone_digits:
+                intel["bankAccounts"].append(clean)
+                logger.info(f"Extracted bank account (spaced): {clean}")
+
+    # 6. IFSC codes -------------------------------------------------------
+    if "ifsc" in COMPILED_PATTERNS:
+        for match in COMPILED_PATTERNS["ifsc"].findall(text):
+            if match not in intel.get("ifscCodes", []):
+                if "ifscCodes" not in intel:
+                    intel["ifscCodes"] = []
+                intel["ifscCodes"].append(match)
+                logger.info(f"Extracted IFSC code: {match}")
+
+    # 7. Suspicious keywords ---------------------------------------------
     text_lower = text.casefold()
     for kw in SCAM_KEYWORDS:
         if kw in text_lower and kw not in intel["suspiciousKeywords"]:

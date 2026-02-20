@@ -117,6 +117,10 @@ def get_optimal_persona(scammer_message: str) -> tuple[str, str]:
         # Semantic: reward without effort (scammers avoid keywords)
         "selected", "chosen", "draw", "reward", "allocation",
         "your number", "bumper", "coupon", "gift",
+        # Job scams (excitement-based, naive persona works well)
+        "job", "hiring", "vacancy", "salary", "offer letter",
+        "placement", "work from home", "recruitment", "stipend",
+        "freelance", "data entry", "part time",
     ]
     # Fee-before-benefit pattern: asking money upfront for a "reward"
     fee_before_benefit = [
@@ -130,6 +134,7 @@ def get_optimal_persona(scammer_message: str) -> tuple[str, str]:
         return ("Amit Verma", AMIT_VERMA)
 
     # --- INTENT 2: Investment/Returns/Financial scheme → Rajesh Kumar ---
+    # Also covers: Insurance scams, Income Tax scams, Loan scams
     investment_signals = [
         "loan", "investment", "returns", "profit", "business",
         "mutual fund", "stock", "trading", "interest", "scheme",
@@ -137,28 +142,56 @@ def get_optimal_persona(scammer_message: str) -> tuple[str, str]:
         "guaranteed returns", "double", "triple", "portfolio",
         "sip", "crypto", "forex", "bitcoin", "nifty", "share market",
         "high return", "monthly income", "passive income",
+        # Insurance scams
+        "insurance", "policy", "premium", "maturity", "lic",
+        "endowment", "surrender value", "claim settlement",
+        "nominee", "sum assured", "bonus",
+        # Income Tax / Tax scams
+        "income tax", "itr", "tax refund", "assessment",
+        "e-filing", "tds", "challan", "pan verification",
+        "tax notice", "it department", "it returns",
     ]
     if any(kw in msg_lower for kw in investment_signals):
         return ("Rajesh Kumar", RAJESH_KUMAR)
 
-    # --- INTENT 3: Tech/Credit Card/Digital scam → Priya Sharma ---
+    # --- INTENT 3: Tech/Credit Card/Digital/Refund scam → Priya Sharma ---
+    # Also covers: Refund scams, Tech Support scams, Phishing
     tech_signals = [
         "credit card", "upgrade", "cashback", "account compromised",
         "hacking", "suspicious activity", "premium", "verified", "instagram",
         # Semantic: digital/app-based scams
         "app", "link", "click", "download", "otp", "password",
-        "email", "login", "unauthorized", "device", "refund",
+        "email", "login", "unauthorized", "device",
+        # Refund scams
+        "refund", "reimbursement", "excess payment", "overpaid",
+        "reversal", "cashback", "failed transaction", "double charged",
+        # Tech support scams
+        "virus", "malware", "hacked", "anydesk", "teamviewer",
+        "antivirus", "remote access", "screen share",
+        "microsoft", "windows", "computer", "laptop",
+        "tech support", "helpline", "customer care",
     ]
     if any(kw in msg_lower for kw in tech_signals):
         return ("Priya Sharma", PRIYA_SHARMA)
 
-    # --- INTENT 4: Authority + money demand → Kamla Devi ---
-    # Government, RBI, bank authority scams — or any unclassified scam
+    # --- INTENT 4: Authority / Utility / Customs → Kamla Devi ---
+    # Government, RBI, bank authority scams, electricity bill, customs parcel
     authority_signals = [
         "rbi", "sebi", "government", "police", "court", "warrant",
         "aadhaar", "pan card", "kyc", "block", "suspend", "freeze",
         "compliance", "investigation", "legal action", "arrest",
         "sbi", "bank", "branch", "manager", "officer",
+        # Electricity / Utility scams
+        "electricity", "bill", "disconnect", "bijli", "meter",
+        "bses", "tata power", "adani", "power cut", "outstanding",
+        "due amount", "overdue", "connection",
+        # Customs / Parcel / Courier scams
+        "customs", "parcel", "courier", "detained", "seized",
+        "contraband", "clearance", "consignment", "delivery",
+        "fedex", "dhl", "bluedart", "india post",
+        # Government scheme scams
+        "pm kisan", "ayushman", "jan dhan", "ration", "subsidy",
+        "beneficiary", "aadhar",
     ]
     if any(kw in msg_lower for kw in authority_signals):
         return ("Kamla Devi", KAMLA_DEVI)

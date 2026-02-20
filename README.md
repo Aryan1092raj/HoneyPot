@@ -28,7 +28,7 @@
 | Capability | Details |
 |------------|---------|
 | **Scam Detection** | Multi-layer: lottery+amount, urgency+finance, keyword density, multi-signal |
-| **Red-Flag Identification** | 9 categories: urgency, authority impersonation, financial request, personal info, too-good-to-be-true, threats, suspicious links, upfront payment, secrecy |
+| **Red-Flag Identification** | 18 categories: urgency, authority impersonation, financial request, personal info, too-good-to-be-true, threats, suspicious links, upfront payment, secrecy, and more |
 | **4 AI Personas** | Kamla Devi (elderly), Amit Verma (student), Rajesh Kumar (businessman), Priya Sharma (professional) |
 | **Intelligence Extraction** | UPI IDs, phone numbers, bank accounts, phishing URLs, email addresses, suspicious keywords |
 | **State Machine** | Deterministic 4-phase engagement: trust-building → probing → extraction → winding-down |
@@ -203,7 +203,7 @@ Server health check with Groq LLM status and active session count.
 ```
 ├── README.md                  # This file
 ├── api.py                     # Entry point (thin wrapper → src/)
-├── render.yaml                # Render deployment configuration
+├── requirements.txt           # API server dependencies (for Render)
 ├── src/
 │   ├── __init__.py            # Package metadata
 │   ├── main.py                # FastAPI app, endpoints, error handlers
@@ -213,9 +213,6 @@ Server health check with Groq LLM status and active session count.
 │   ├── models.py              # Pydantic request/response models
 │   ├── config.py              # Constants, logging, compiled patterns
 │   └── personas.py            # 4 AI persona definitions
-├── test.py                    # Automated 10-turn integration test
-├── requirements-api.txt       # API server dependencies
-├── requirements.txt           # Streamlit UI dependencies
 ├── .env.example               # Environment variable template
 ├── .gitignore                 # Standard Python gitignore
 └── docs/
@@ -250,23 +247,28 @@ All configuration is in `src/config.py` and `.env`:
 
 | Constant | Default | Purpose |
 |----------|---------|---------|
-| `MIN_MESSAGES` | 5 | First callback is sent at this turn |
+| `MIN_MESSAGES` | 1 | First callback is sent at this turn |
 | `MAX_MESSAGES` | 10 | Hard session cap (evaluator max) |
-| `SCAM_KEYWORDS` | 36 keywords | Keyword-density scam detection |
-| `RED_FLAG_CATEGORIES` | 9 categories | Social-engineering red-flag identification |
+| `SCAM_KEYWORDS` | 192+ keywords | Keyword-density scam detection |
+| `RED_FLAG_CATEGORIES` | 18 categories | Social-engineering red-flag identification |
 
 ---
 
 ## Testing
 
-Run the automated 10-turn integration test:
+Test the API manually using curl or the interactive Swagger docs:
 
 ```bash
-python test.py
+# Health check
+curl http://localhost:8000/health
+
+# Send a test message
+curl -X POST http://localhost:8000/api/honeypot \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"test-001","message":{"sender":"scammer","text":"Your SBI account is blocked!","timestamp":"2025-02-11T10:30:00Z"},"conversationHistory":[]}'
 ```
 
-This simulates a full evaluator interaction: sends 10 scammer messages,
-verifies scam detection, intelligence extraction, and callback delivery.
+Or use the Swagger UI at `http://localhost:8000/docs` for interactive testing.
 
 ---
 
